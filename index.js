@@ -4,6 +4,23 @@ const path = require("path");
 
 const app = express();
 
+const http = require("http");
+const { Server } = require("socket.io");
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: { origin: "*" }
+});
+
+io.on("connection", (socket) => {
+    console.log("Client connesso");
+
+    socket.on("disconnect", () => {
+        console.log("Client disconnesso");
+    });
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -18,12 +35,17 @@ let sims = [];
 
 // 📩 SMS
 app.post("/sms", (req, res) => {
-    const sms = req.body;
+
+    const sms = req.body; // ✅ PRIMA
+
     smsList.push(sms);
 
     console.log("SMS ricevuto:", sms);
 
-    // 🔥 MATCH PER SIM
+    // 🔥 REALTIME
+    io.emit("new_sms", sms);
+
+    // 🔥 MATCH TEST
     tests.forEach(test => {
         if (test.status === "PENDING") {
             if (sms.simId === test.simId) {
@@ -39,7 +61,7 @@ app.post("/sms", (req, res) => {
     res.json({ status: "ok" });
 });
 
-// SMS list
+// 📥 SMS
 app.get("/sms", (req, res) => {
     res.json(smsList);
 });
@@ -49,7 +71,7 @@ app.post("/test", (req, res) => {
     const test = {
         id: Date.now(),
         expected: req.body.expected,
-        simId: req.body.simId, // 🔥 QUI
+        simId: req.body.simId,
         status: "PENDING",
         createdAt: Date.now(),
         completedAt: null,
@@ -78,7 +100,7 @@ setInterval(() => {
     });
 }, 5000);
 
-// 📶 REGISTRA SIM
+// 📶 SIM
 app.post("/register-sim", (req, res) => {
     const sim = {
         id: Date.now(),
@@ -94,13 +116,13 @@ app.post("/register-sim", (req, res) => {
     res.json(sim);
 });
 
-// 📶 LISTA SIM
 app.get("/sims", (req, res) => {
     res.json(sims);
 });
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log("Server avviato su porta", PORT);
+// ❗ QUI STA LA DIFFERENZA
+server.listen(PORT, () => {
+    console.log("Server (WebSocket) avviato su porta", PORT);
 });
