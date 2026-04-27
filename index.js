@@ -21,7 +21,13 @@ io.on("connection", (socket) => {
 
     socket.on("register_device", (data) => {
 
-        devicesOnline[socket.id] = data; // salva tutto
+        devicesOnline[socket.id] = {
+            deviceId: data.deviceId,
+            model: data.model,
+            phoneNumber: data.phoneNumber,
+            sims: data.sims, // 🔥 array
+            connectedAt: Date.now()
+        };
 
         console.log("Device online:", data);
     });

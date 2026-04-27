@@ -18,17 +18,10 @@
             justify-content: space-between;
         }
 
-        h1 {
-            color: #22c55e;
-        }
+        h1 { color: #22c55e; }
+        h2 { margin-top: 30px; }
 
-        h2 {
-            margin-top: 30px;
-        }
-
-        .container {
-            padding: 20px;
-        }
+        .container { padding: 20px; }
 
         input, select {
             padding: 10px;
@@ -57,19 +50,9 @@
         .fail { border-left: 4px solid #ef4444; }
         .pending { border-left: 4px solid #64748b; }
 
-        .otp {
-            color: #facc15;
-            font-weight: bold;
-        }
-
-        .small {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .device {
-            border-left: 4px solid #22c55e;
-        }
+        .otp { color: #facc15; font-weight: bold; }
+        .small { font-size: 12px; color: #64748b; }
+        .device { border-left: 4px solid #22c55e; }
     </style>
 </head>
 
@@ -104,27 +87,53 @@
 <script>
 const API = "https://sms-backend-jp2t.onrender.com";
 
-// 🔐 evidenzia OTP
+// OTP highlight
 function highlightOTP(text) {
     return text.replace(/\b\d{4,6}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-// 📱 DEVICE ONLINE
+//
+// 📱 DEVICE + SIM
+//
 async function loadDevices() {
     try {
         const res = await fetch(API + "/devices-online");
         const data = await res.json();
 
         const container = document.getElementById("devices");
-        container.innerHTML = "";
+        const select = document.getElementById("simSelect");
 
-        data.forEach(d => {
+        container.innerHTML = "";
+        select.innerHTML = "";
+
+        data.forEach(device => {
+
+            // UI lista device
             const div = document.createElement("div");
             div.className = "card device";
 
+            let simsHtml = "";
+
+            device.sims?.forEach(sim => {
+                simsHtml += `SIM ${sim.slot + 1} - ${sim.carrier}<br>`;
+
+                // 🔥 SELECT PER TEST
+                const opt = document.createElement("option");
+
+                opt.value = JSON.stringify({
+                    deviceId: device.deviceId,
+                    simSlot: sim.slot
+                });
+
+                opt.innerText = `📱 ${device.model} | SIM ${sim.slot + 1} (${sim.carrier})`;
+
+                select.appendChild(opt);
+            });
+
             div.innerHTML = `
-                📱 <b>${d.deviceId}</b><br>
-                <span class="small">${d.simId}</span>
+                <b>${device.model}</b><br>
+                <span class="small">${device.deviceId}</span><br>
+                <span class="small">${simsHtml}</span>
             `;
 
             container.appendChild(div);
@@ -135,7 +144,9 @@ async function loadDevices() {
     }
 }
 
+//
 // 📩 SMS
+//
 async function loadSMS() {
     const res = await fetch(API + "/sms");
     const data = await res.json();
@@ -158,29 +169,19 @@ async function loadSMS() {
     });
 }
 
-// 📶 SIM
-async function loadSims() {
-    const res = await fetch(API + "/sims");
-    const data = await res.json();
-
-    const select = document.getElementById("simSelect");
-    select.innerHTML = "";
-
-    data.forEach(sim => {
-        const opt = document.createElement("option");
-        opt.value = sim.simId;
-        opt.innerText = sim.phoneNumber + " (" + sim.deviceId + ")";
-        select.appendChild(opt);
-    });
-}
-
+//
 // 🧪 CREA TEST
+//
 async function createTest() {
-    const expected = document.getElementById("expected").value;
-    const simId = document.getElementById("simSelect").value;
 
-    if (!expected || !simId) {
-        alert("Inserisci testo e seleziona SIM");
+    const expected = document.getElementById("expected").value;
+
+    const selected = JSON.parse(
+        document.getElementById("simSelect").value
+    );
+
+    if (!expected) {
+        alert("Inserisci testo");
         return;
     }
 
@@ -189,19 +190,24 @@ async function createTest() {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ expected, simId })
+        body: JSON.stringify({
+            expected,
+            deviceId: selected.deviceId,
+            simSlot: selected.simSlot
+        })
     });
 
     document.getElementById("expected").value = "";
 }
 
+//
 // 🎯 TEST UI
+//
 function renderTests(data) {
     const container = document.getElementById("tests");
     container.innerHTML = "";
 
     data.slice().reverse().forEach(test => {
-        const div = document.createElement("div");
 
         let cls = "pending";
         let status = "⏳ PENDING";
@@ -216,12 +222,13 @@ function renderTests(data) {
             status = "❌ FAIL";
         }
 
+        const div = document.createElement("div");
         div.className = "card " + cls;
 
         div.innerHTML = `
             <b>${test.expected}</b><br>
             ${status}<br>
-            <span class="small">SIM: ${test.simId}</span><br>
+            <span class="small">📱 ${test.deviceId} | SIM ${test.simSlot + 1}</span><br>
             <span class="small">Creato: ${new Date(test.createdAt).toLocaleTimeString()}</span>
         `;
 
@@ -229,24 +236,29 @@ function renderTests(data) {
     });
 }
 
-// 📊 TEST LOAD
+//
+// 📊 LOAD TEST
+//
 async function loadTests() {
     const res = await fetch(API + "/tests");
     const data = await res.json();
     renderTests(data);
 }
 
+//
 // 🔄 REFRESH
+//
 setInterval(() => {
     loadSMS();
     loadTests();
     loadDevices();
 }, 2000);
 
+//
 // INIT
+//
 loadSMS();
 loadTests();
-loadSims();
 loadDevices();
 </script>
 
