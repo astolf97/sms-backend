@@ -22,6 +22,10 @@
             color: #22c55e;
         }
 
+        h2 {
+            margin-top: 30px;
+        }
+
         .container {
             padding: 20px;
         }
@@ -42,7 +46,7 @@
             cursor: pointer;
         }
 
-        .sms, .test {
+        .card {
             background: #020617;
             padding: 12px;
             margin-bottom: 10px;
@@ -62,16 +66,24 @@
             font-size: 12px;
             color: #64748b;
         }
+
+        .device {
+            border-left: 4px solid #22c55e;
+        }
     </style>
 </head>
 
 <body>
 
 <header>
-    <h1>📩 SMS + Testing Dashboard</h1>
+    <h1>📩 SMS Testing Dashboard</h1>
 </header>
 
 <div class="container">
+
+    <!-- 📱 DEVICE ONLINE -->
+    <h2>📱 Device Online</h2>
+    <div id="devices"></div>
 
     <!-- 📩 SMS -->
     <h2>📨 SMS</h2>
@@ -81,8 +93,6 @@
     <h2>🧪 Test SMS</h2>
 
     <input id="expected" placeholder="Testo atteso (es: OTP)">
-    
-    <!-- 🔥 SELECT SIM -->
     <select id="simSelect"></select>
 
     <button onclick="createTest()">Crea Test</button>
@@ -99,7 +109,33 @@ function highlightOTP(text) {
     return text.replace(/\b\d{4,6}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-// 📩 CARICA SMS
+// 📱 DEVICE ONLINE
+async function loadDevices() {
+    try {
+        const res = await fetch(API + "/devices-online");
+        const data = await res.json();
+
+        const container = document.getElementById("devices");
+        container.innerHTML = "";
+
+        data.forEach(d => {
+            const div = document.createElement("div");
+            div.className = "card device";
+
+            div.innerHTML = `
+                📱 <b>${d.deviceId}</b><br>
+                <span class="small">${d.simId}</span>
+            `;
+
+            container.appendChild(div);
+        });
+
+    } catch (e) {
+        console.log("Errore devices:", e);
+    }
+}
+
+// 📩 SMS
 async function loadSMS() {
     const res = await fetch(API + "/sms");
     const data = await res.json();
@@ -109,7 +145,7 @@ async function loadSMS() {
 
     data.slice().reverse().forEach(sms => {
         const div = document.createElement("div");
-        div.className = "sms";
+        div.className = "card";
 
         div.innerHTML = `
             <b>${sms.sender}</b><br>
@@ -122,7 +158,7 @@ async function loadSMS() {
     });
 }
 
-// 📶 CARICA SIM
+// 📶 SIM
 async function loadSims() {
     const res = await fetch(API + "/sims");
     const data = await res.json();
@@ -159,7 +195,7 @@ async function createTest() {
     document.getElementById("expected").value = "";
 }
 
-// 🎯 RENDER TEST
+// 🎯 TEST UI
 function renderTests(data) {
     const container = document.getElementById("tests");
     container.innerHTML = "";
@@ -180,7 +216,7 @@ function renderTests(data) {
             status = "❌ FAIL";
         }
 
-        div.className = "test " + cls;
+        div.className = "card " + cls;
 
         div.innerHTML = `
             <b>${test.expected}</b><br>
@@ -193,23 +229,25 @@ function renderTests(data) {
     });
 }
 
-// 📊 CARICA TEST
+// 📊 TEST LOAD
 async function loadTests() {
     const res = await fetch(API + "/tests");
     const data = await res.json();
     renderTests(data);
 }
 
-// 🔄 REFRESH CONTINUO
+// 🔄 REFRESH
 setInterval(() => {
     loadSMS();
     loadTests();
+    loadDevices();
 }, 2000);
 
 // INIT
 loadSMS();
 loadTests();
 loadSims();
+loadDevices();
 </script>
 
 </body>
