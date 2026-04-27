@@ -21,15 +21,9 @@ io.on("connection", (socket) => {
 
     socket.on("register_device", (data) => {
 
-        const { deviceId, simId } = data;
+        devicesOnline[socket.id] = data; // salva tutto
 
-        devicesOnline[data.deviceId] = {
-            deviceId: data.deviceId,
-            simId: data.simId,
-            connectedAt: Date.now()
-        };
-
-        console.log("Device online:", deviceId, simId);
+        console.log("Device online:", data);
     });
 
     socket.on("disconnect", () => {
