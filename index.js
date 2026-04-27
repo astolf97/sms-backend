@@ -42,15 +42,19 @@ io.on("connection", (socket) => {
             delete devicesOnline[oldSocketId];
         }
 
-        devicesOnline[socket.id] = {
+        // ✅ CREA device QUI
+        const device = {
             deviceId: data.deviceId,
             model: data.model || "unknown",
             phoneNumber: data.phoneNumber || "unknown",
-            sims: existingSims, // 🔥 NON più data.sims
+            sims: existingSims,
             connectedAt: Date.now()
         };
 
-        console.log("📱 DEVICE ONLINE:", data.deviceId);
+        devicesOnline[socket.id] = device;
+
+        // ✅ ORA FUNZIONA
+        console.log("📱 DEVICE ONLINE");
         console.log("ID:", device.deviceId);
         console.log("MODEL:", device.model);
         console.log("PHONE:", device.phoneNumber);
