@@ -7,15 +7,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ serve index.html
-app.use(express.static(path.join(__dirname)));
+// serve file statici
+app.use(express.static(__dirname));
 
-let smsList = [];
-
-// 👉 opzionale: apre dashboard direttamente su /
+// ROOT → index.html
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
+
+let smsList = [];
 
 app.post("/sms", (req, res) => {
     const sms = req.body;
