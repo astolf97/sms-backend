@@ -131,11 +131,17 @@ async function loadDevices() {
                 <div style="margin-top:10px; padding:8px; background:#020617; border-radius:6px;">
                     <b>${sim.simId}</b><br>
 
-                    <input 
-                        placeholder="Numero SIM..."
-                        value="${sim.label || ""}"
-                        onblur="saveSimLabel('${d.deviceId}', '${sim.simId}', this.value)"
-                    >
+                    <div style="display:flex; gap:6px; margin-top:5px;">
+                        <input 
+                            id="input-${d.deviceId}-${sim.simId}"
+                            placeholder="Numero SIM..."
+                            value="${sim.label || ""}"
+                            onfocus="startEditing()"
+                        >
+                        <button onclick="manualSave('${d.deviceId}', '${sim.simId}')">
+                            💾
+                        </button>
+                    </div>
                 </div>
             `;
         });
@@ -193,6 +199,32 @@ function getSimLabel(deviceId, simId) {
     return sim?.label || simId;
 }
 
+
+let editing = false;
+
+function startEditing() {
+    editing = true;
+}
+
+async function manualSave(deviceId, simId) {
+
+    const input = document.getElementById(`input-${deviceId}-${simId}`);
+    const label = input.value;
+
+    await fetch(API + "/set-sim-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, simId, label })
+    });
+
+    console.log("✅ Salvato:", simId, label);
+
+    // 🔥 SOLO ORA sblocchi
+    editing = false;
+
+    // aggiorna UI
+    await loadDevices();
+}
 //
 // 🧪 TEST
 //
@@ -290,10 +322,14 @@ async function loadSimSelect() {
 // 🔄 REFRESH (SOLO DATI)
 //
 setInterval(async () => {
+
+    if (editing) return; // 🔥 BLOCCO TOTALE
+
     await loadSMS();
     await loadTests();
     await loadSimsCache();
     await loadSimSelect();
+
 }, 2000);
 
 //
