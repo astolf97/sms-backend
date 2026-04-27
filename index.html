@@ -2,75 +2,152 @@
 <html>
 <head>
     <title>SMS Dashboard</title>
+
     <style>
         body {
             font-family: Arial;
-            background: #111;
-            color: #fff;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+        }
+
+        header {
+            background: #020617;
             padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         h1 {
-            color: #00ffcc;
+            color: #22c55e;
+            margin: 0;
+        }
+
+        .stats {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            width: 200px;
         }
 
         .sms {
-            background: #222;
-            padding: 10px;
+            background: #020617;
+            padding: 15px;
             margin-bottom: 10px;
-            border-radius: 8px;
+            border-radius: 10px;
+            border-left: 4px solid #22c55e;
         }
 
         .sender {
-            color: #00ffcc;
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        .otp {
+            color: #facc15;
             font-weight: bold;
         }
 
         .time {
             font-size: 12px;
-            color: #aaa;
+            color: #64748b;
         }
     </style>
 </head>
+
 <body>
 
-<h1>📩 SMS Dashboard</h1>
+<header>
+    <h1>📩 SMS Dashboard</h1>
+    <div class="stats" id="stats">0 SMS</div>
+</header>
 
-<div id="list"></div>
+<div class="container">
+
+    <div class="controls">
+        <input id="search" placeholder="🔍 Cerca testo...">
+        <input id="filterNumber" placeholder="📞 Filtra numero...">
+    </div>
+
+    <div id="list"></div>
+
+</div>
 
 <script>
+let allSMS = [];
+
+function highlightOTP(text) {
+    return text.replace(/\\b\\d{4,6}\\b/g, match => {
+        return `<span class="otp">${match}</span>`;
+    });
+}
+
+function renderSMS() {
+    const search = document.getElementById("search").value.toLowerCase();
+    const filterNumber = document.getElementById("filterNumber").value;
+
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    const filtered = allSMS.filter(sms => {
+        return (
+            sms.message.toLowerCase().includes(search) &&
+            sms.sender.includes(filterNumber)
+        );
+    });
+
+    document.getElementById("stats").innerText = filtered.length + " SMS";
+
+    filtered.reverse().forEach(sms => {
+        const div = document.createElement("div");
+        div.className = "sms";
+
+        const time = new Date(sms.timestamp).toLocaleString();
+        const message = highlightOTP(sms.message);
+
+        div.innerHTML = `
+            <div class="sender">${sms.sender}</div>
+            <div>${message}</div>
+            <div class="time">${time}</div>
+        `;
+
+        list.appendChild(div);
+    });
+}
+
 async function loadSMS() {
     try {
         const res = await fetch("https://sms-backend-jp2t.onrender.com/sms");
-        const data = await res.json();
-
-        const list = document.getElementById("list");
-        list.innerHTML = "";
-
-        data.reverse().forEach(sms => {
-            const div = document.createElement("div");
-            div.className = "sms";
-
-            const time = new Date(sms.timestamp).toLocaleString();
-
-            div.innerHTML = `
-                <div class="sender">${sms.sender}</div>
-                <div>${sms.message}</div>
-                <div class="time">${time}</div>
-            `;
-
-            list.appendChild(div);
-        });
-
+        allSMS = await res.json();
+        renderSMS();
     } catch (e) {
         console.log("Errore:", e);
     }
 }
 
-// aggiorna ogni 2 secondi
+document.getElementById("search").addEventListener("input", renderSMS);
+document.getElementById("filterNumber").addEventListener("input", renderSMS);
+
+// refresh automatico
 setInterval(loadSMS, 2000);
 
-// primo caricamento
 loadSMS();
 </script>
 
