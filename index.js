@@ -145,13 +145,20 @@ app.post("/sms", (req, res) => {
 
             const exists = d.sims.find(s => s.simId === sms.simId);
 
-            if (!exists) {
-                d.sims.push({
+            if (!sim) {
+                sim = {
+                    id: Date.now(),
+                    deviceId: sms.deviceId,
                     simId: sms.simId,
-                    phoneNumber: sms.sender || "unknown"
-                });
+                    senders: [], // 🔥 non phoneNumber
+                    lastSeen: Date.now()
+                };
 
-                console.log("📶 SIM aggiunta al device:", sms.simId);
+                sims.push(sim);
+            }
+
+            if (sms.sender && !sim.senders.includes(sms.sender)) {
+                sim.senders.push(sms.sender);
             }
         }
     });
