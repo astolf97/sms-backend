@@ -26,7 +26,7 @@
             padding: 20px;
         }
 
-        input {
+        input, select {
             padding: 10px;
             border-radius: 8px;
             border: none;
@@ -73,12 +73,18 @@
 
 <div class="container">
 
+    <!-- 📩 SMS -->
     <h2>📨 SMS</h2>
     <div id="sms"></div>
 
+    <!-- 🧪 TEST -->
     <h2>🧪 Test SMS</h2>
 
     <input id="expected" placeholder="Testo atteso (es: OTP)">
+    
+    <!-- 🔥 SELECT SIM -->
+    <select id="simSelect"></select>
+
     <button onclick="createTest()">Crea Test</button>
 
     <div id="tests"></div>
@@ -88,12 +94,12 @@
 <script>
 const API = "https://sms-backend-jp2t.onrender.com";
 
-// evidenzia OTP
+// 🔐 evidenzia OTP
 function highlightOTP(text) {
     return text.replace(/\b\d{4,6}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-// 📩 SMS
+// 📩 CARICA SMS
 async function loadSMS() {
     const res = await fetch(API + "/sms");
     const data = await res.json();
@@ -108,26 +114,52 @@ async function loadSMS() {
         div.innerHTML = `
             <b>${sms.sender}</b><br>
             ${highlightOTP(sms.message)}<br>
-            <span class="small">${new Date(sms.timestamp).toLocaleString()}</span>
+            <span class="small">${new Date(sms.timestamp).toLocaleString()}</span><br>
+            <span class="small">SIM: ${sms.simId}</span>
         `;
 
         container.appendChild(div);
     });
 }
 
-// 🧪 TEST
+// 📶 CARICA SIM
+async function loadSims() {
+    const res = await fetch(API + "/sims");
+    const data = await res.json();
+
+    const select = document.getElementById("simSelect");
+    select.innerHTML = "";
+
+    data.forEach(sim => {
+        const opt = document.createElement("option");
+        opt.value = sim.simId;
+        opt.innerText = sim.phoneNumber + " (" + sim.deviceId + ")";
+        select.appendChild(opt);
+    });
+}
+
+// 🧪 CREA TEST
 async function createTest() {
     const expected = document.getElementById("expected").value;
+    const simId = document.getElementById("simSelect").value;
+
+    if (!expected || !simId) {
+        alert("Inserisci testo e seleziona SIM");
+        return;
+    }
 
     await fetch(API + "/test", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ expected })
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ expected, simId })
     });
 
     document.getElementById("expected").value = "";
 }
 
+// 🎯 RENDER TEST
 function renderTests(data) {
     const container = document.getElementById("tests");
     container.innerHTML = "";
@@ -153,29 +185,31 @@ function renderTests(data) {
         div.innerHTML = `
             <b>${test.expected}</b><br>
             ${status}<br>
-            <span class="small">
-                creato: ${new Date(test.createdAt).toLocaleTimeString()}
-            </span>
+            <span class="small">SIM: ${test.simId}</span><br>
+            <span class="small">Creato: ${new Date(test.createdAt).toLocaleTimeString()}</span>
         `;
 
         container.appendChild(div);
     });
 }
 
+// 📊 CARICA TEST
 async function loadTests() {
     const res = await fetch(API + "/tests");
     const data = await res.json();
     renderTests(data);
 }
 
-// refresh continuo
+// 🔄 REFRESH CONTINUO
 setInterval(() => {
     loadSMS();
     loadTests();
 }, 2000);
 
+// INIT
 loadSMS();
 loadTests();
+loadSims();
 </script>
 
 </body>

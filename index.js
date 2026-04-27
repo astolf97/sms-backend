@@ -8,28 +8,30 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// ROOT → dashboard
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
 let smsList = [];
 let tests = [];
+let sims = [];
 
-// 📩 Ricezione SMS
+// 📩 SMS
 app.post("/sms", (req, res) => {
     const sms = req.body;
     smsList.push(sms);
 
     console.log("SMS ricevuto:", sms);
 
-    // 🔥 CHECK TEST
+    // 🔥 MATCH PER SIM
     tests.forEach(test => {
         if (test.status === "PENDING") {
-            if (sms.message.toLowerCase().includes(test.expected.toLowerCase())) {
-                test.status = "PASS";
-                test.result = sms.message;
-                test.completedAt = Date.now();
+            if (sms.simId === test.simId) {
+                if (sms.message.toLowerCase().includes(test.expected.toLowerCase())) {
+                    test.status = "PASS";
+                    test.result = sms.message;
+                    test.completedAt = Date.now();
+                }
             }
         }
     });
@@ -37,33 +39,32 @@ app.post("/sms", (req, res) => {
     res.json({ status: "ok" });
 });
 
-// 📥 Lista SMS
+// SMS list
 app.get("/sms", (req, res) => {
     res.json(smsList);
 });
 
-// 🧪 Crea test
+// 🧪 TEST
 app.post("/test", (req, res) => {
     const test = {
         id: Date.now(),
         expected: req.body.expected,
+        simId: req.body.simId, // 🔥 QUI
         status: "PENDING",
-        result: null,
         createdAt: Date.now(),
         completedAt: null,
-        timeout: 30000 // 30 sec
+        timeout: 30000
     };
 
     tests.push(test);
     res.json(test);
 });
 
-// 📊 Lista test
 app.get("/tests", (req, res) => {
     res.json(tests);
 });
 
-// ⏱ FAIL automatico
+// ⏱ timeout
 setInterval(() => {
     const now = Date.now();
 
@@ -75,7 +76,28 @@ setInterval(() => {
             }
         }
     });
-}, 2000);
+}, 5000);
+
+// 📶 REGISTRA SIM
+app.post("/register-sim", (req, res) => {
+    const sim = {
+        id: Date.now(),
+        deviceId: req.body.deviceId,
+        simId: req.body.simId,
+        phoneNumber: req.body.phoneNumber
+    };
+
+    sims.push(sim);
+
+    console.log("SIM registrata:", sim);
+
+    res.json(sim);
+});
+
+// 📶 LISTA SIM
+app.get("/sims", (req, res) => {
+    res.json(sims);
+});
 
 const PORT = process.env.PORT || 3000;
 
