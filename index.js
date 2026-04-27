@@ -30,6 +30,8 @@ app.get("/sms", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
+console.log("FILES:", require("fs").readdirSync(__dirname));
+
 app.listen(PORT, () => {
     console.log("Server avviato su porta", PORT);
 });
