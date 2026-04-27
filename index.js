@@ -20,6 +20,7 @@ let devicesOnline = {};
 let smsList = [];
 let tests = [];
 let sims = [];
+let deviceNumbers = {}; // 👈 ora esiste
 
 //
 // 🔌 SOCKET.IO
@@ -101,12 +102,10 @@ app.post("/sms", (req, res) => {
     console.log("📩 SMS ricevuto:", sms);
 
     //
-    // 🔥 SOLO SIM DETECTION (STOP)
+    // 🔥 TROVA O CREA SIM
     //
     let sim = sims.find(
-        s =>
-            s.deviceId === sms.deviceId &&
-            s.simId === sms.simId
+        s => s.deviceId === sms.deviceId && s.simId === sms.simId
     );
 
     if (!sim) {
@@ -114,7 +113,8 @@ app.post("/sms", (req, res) => {
             id: Date.now(),
             deviceId: sms.deviceId,
             simId: sms.simId,
-            label: null,        // 👈 numero SIM manuale
+            label: null,      // 👈 numero lo metti manualmente
+            senders: [],      // 👈 utile per debug
             lastSeen: Date.now()
         };
 
@@ -123,7 +123,13 @@ app.post("/sms", (req, res) => {
         console.log("🔥 Nuova SIM rilevata:", sim.simId);
     }
 
+    // aggiorna timestamp
     sim.lastSeen = Date.now();
+
+    // salva sender (solo debug/statistiche)
+    if (sms.sender && !sim.senders.includes(sms.sender)) {
+        sim.senders.push(sms.sender);
+    }
 
     //
     // 🔥 AGGIORNA DEVICE ONLINE
