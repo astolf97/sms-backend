@@ -87,13 +87,30 @@
 <script>
 const API = "https://sms-backend-jp2t.onrender.com";
 
+// 🔥 debounce save
+let typingTimeout;
+
+function saveSimLabel(deviceId, simId, label) {
+    clearTimeout(typingTimeout);
+
+    typingTimeout = setTimeout(async () => {
+        await fetch(API + "/set-sim-label", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId, simId, label })
+        });
+
+        console.log("✅ Label salvata:", simId, label);
+    }, 500);
+}
+
 // OTP highlight
 function highlightOTP(text) {
     return text.replace(/\b\d{4,6}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
 //
-// 📱 DEVICE + SIM
+// 📱 DEVICE + SIM (NON in loop)
 //
 async function loadDevices() {
     const res = await fetch(API + "/devices-online");
@@ -117,7 +134,7 @@ async function loadDevices() {
                     <input 
                         placeholder="Numero SIM..."
                         value="${sim.label || ""}"
-                        onchange="setSimLabel('${d.deviceId}', '${sim.simId}', this.value)"
+                        onblur="saveSimLabel('${d.deviceId}', '${sim.simId}', this.value)"
                     >
                 </div>
             `;
@@ -133,22 +150,8 @@ async function loadDevices() {
     });
 }
 
-async function setSimLabel(deviceId, simId, label) {
-
-    await fetch(API + "/set-sim-label", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ deviceId, simId, label })
-    });
-
-    console.log("✅ Label salvata:", simId, label);
-}
-
-
 //
-// 📩 SMS
+// 📩 SMS (loop ok)
 //
 async function loadSMS() {
     const res = await fetch(API + "/sms");
@@ -172,6 +175,9 @@ async function loadSMS() {
     });
 }
 
+//
+// 📶 SIM CACHE
+//
 let simsCache = [];
 
 async function loadSimsCache() {
@@ -188,7 +194,7 @@ function getSimLabel(deviceId, simId) {
 }
 
 //
-// 🧪 CREA TEST
+// 🧪 TEST
 //
 async function createTest() {
 
@@ -205,9 +211,7 @@ async function createTest() {
 
     await fetch(API + "/test", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             expected,
             deviceId: selected.deviceId,
@@ -218,9 +222,6 @@ async function createTest() {
     document.getElementById("expected").value = "";
 }
 
-//
-// 🎯 TEST UI
-//
 function renderTests(data) {
     const container = document.getElementById("tests");
     container.innerHTML = "";
@@ -254,11 +255,15 @@ function renderTests(data) {
     });
 }
 
-function getMainNumber(phoneNumbers) {
-    return phoneNumbers[0] || "unknown";
+async function loadTests() {
+    const res = await fetch(API + "/tests");
+    const data = await res.json();
+    renderTests(data);
 }
 
-
+//
+// 📶 SELECT SIM
+//
 async function loadSimSelect() {
     const res = await fetch(API + "/sims");
     const data = await res.json();
@@ -282,36 +287,32 @@ async function loadSimSelect() {
 }
 
 //
-// 📊 LOAD TEST
-//
-async function loadTests() {
-    const res = await fetch(API + "/tests");
-    const data = await res.json();
-    renderTests(data);
-}
-
-//
-// 🔄 REFRESH
+// 🔄 REFRESH (SOLO DATI)
 //
 setInterval(async () => {
     await loadSMS();
     await loadTests();
     await loadSimsCache();
+    await loadSimSelect();
 }, 2000);
 
 //
-// INIT
+// 🔄 DEVICE REFRESH LENTO
+//
+setInterval(loadDevices, 8000);
+
+//
+// 🚀 INIT
 //
 async function init() {
+    await loadDevices();
     await loadSimsCache();
     await loadSimSelect();
-    await loadDevices(); // 🔥 solo una volta
     await loadSMS();
     await loadTests();
 }
 
 init();
-
 
 </script>
 
