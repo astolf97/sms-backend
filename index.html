@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SMS Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: #fff;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #00ffcc;
+        }
+
+        .sms {
+            background: #222;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+
+        .sender {
+            color: #00ffcc;
+            font-weight: bold;
+        }
+
+        .time {
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+<h1>📩 SMS Dashboard</h1>
+
+<div id="list"></div>
+
+<script>
+async function loadSMS() {
+    try {
+        const res = await fetch("https://sms-backend-jp2t.onrender.com/sms");
+        const data = await res.json();
+
+        const list = document.getElementById("list");
+        list.innerHTML = "";
+
+        data.reverse().forEach(sms => {
+            const div = document.createElement("div");
+            div.className = "sms";
+
+            const time = new Date(sms.timestamp).toLocaleString();
+
+            div.innerHTML = `
+                <div class="sender">${sms.sender}</div>
+                <div>${sms.message}</div>
+                <div class="time">${time}</div>
+            `;
+
+            list.appendChild(div);
+        });
+
+    } catch (e) {
+        console.log("Errore:", e);
+    }
+}
+
+// aggiorna ogni 2 secondi
+setInterval(loadSMS, 2000);
+
+// primo caricamento
+loadSMS();
+</script>
+
+</body>
+</html>
