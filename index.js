@@ -54,6 +54,39 @@ io.on("connection", (socket) => {
 
         devicesOnline[socket.id] = device;
 
+        // 🔥 SALVA NUMERI APP COME "candidate"
+        data.sims?.forEach(incomingSim => {
+
+            let sim = sims.find(
+                s => s.deviceId === data.deviceId && s.simId === incomingSim.simId
+            );
+
+            if (!sim) {
+                sim = {
+                    id: Date.now(),
+                    deviceId: data.deviceId,
+                    simId: incomingSim.simId,
+                    label: null,
+                    candidate: null,
+                    senders: [],
+                    lastSeen: Date.now()
+                };
+
+                sims.push(sim);
+
+                console.log("🔥 Nuova SIM da register:", sim.simId);
+            }
+
+            // 👉 QUESTO È IL PUNTO CHIAVE
+            if (incomingSim.number && incomingSim.number.trim() !== "") {
+                sim.candidate = incomingSim.number;
+
+                console.log("🟡 Candidate salvato:", sim.simId, sim.candidate);
+            }
+
+            sim.lastSeen = Date.now();
+        });
+
         // ✅ ORA FUNZIONA
         console.log("📱 DEVICE ONLINE");
         console.log("ID:", device.deviceId);
@@ -114,6 +147,7 @@ app.post("/sms", (req, res) => {
             deviceId: sms.deviceId,
             simId: sms.simId,
             label: null,      // 👈 numero lo metti manualmente
+            candidate: null,
             senders: [],      // 👈 utile per debug
             lastSeen: Date.now()
         };
@@ -222,6 +256,7 @@ app.post("/set-sim-label", (req, res) => {
 
     if (sim) {
         sim.label = label;
+        sim.candidate = null; // 🔥 importantissimo
     }
 
     res.json({ ok: true });

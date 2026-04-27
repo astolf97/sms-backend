@@ -131,7 +131,7 @@ async function loadDevices() {
             const key = `${d.deviceId}-${sim.simId}`;
             const existingInput = document.getElementById(`input-${key}`);
 
-            let value = sim.label || "";
+            let value = sim.label || sim.candidate || "";
 
             // 🔥 se stai editando → NON toccare
             if (editing && editingKey === key && existingInput) {
@@ -208,15 +208,30 @@ function getSimLabel(deviceId, simId) {
         s => s.deviceId === deviceId && s.simId === simId
     );
 
-    return sim?.label || simId;
+    if (!sim) return simId;
+
+    // ✅ numero confermato
+    if (sim.label && sim.label.trim() !== "") {
+        return sim.label;
+    }
+
+    // ⚠️ numero inserito ma non verificato
+    if (sim.candidate && sim.candidate.trim() !== "") {
+        return "⚠️ da verificare: " + sim.candidate;
+    }
+
+    // ❌ niente numero
+    return "⚠️ da configurare (" + simId + ")";
 }
+
 
 
 let editing = false;
 let editingKey = null; // 👈 quale input stai modificando
 
-function startEditing() {
+function startEditing(key) {
     editing = true;
+    editingKey = key;
 }
 
 async function manualSave(deviceId, simId, key) {
@@ -332,7 +347,15 @@ async function loadSimSelect() {
             simId: sim.simId
         });
 
-        opt.innerText = `${sim.label || sim.simId} (${sim.deviceId})`;
+        let label = sim.simId;
+
+        if (sim.label) {
+            label = sim.label;
+        } else if (sim.candidate) {
+            label = "⚠️ " + sim.candidate;
+        }
+
+        opt.innerText = `${label} (${sim.deviceId})`;
 
         select.appendChild(opt);
     });
