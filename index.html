@@ -294,23 +294,18 @@ async function loadTests() {
 // 🔄 REFRESH
 //
 setInterval(async () => {
-    await loadSimsCache();
-    await loadSimSelect();
-    await loadDevices();
     await loadSMS();
     await loadTests();
+    await loadSimsCache();
 }, 2000);
 
-//
-// INIT
-//
 //
 // INIT
 //
 async function init() {
     await loadSimsCache();
     await loadSimSelect();
-    await loadDevices();
+    await loadDevices(); // 🔥 solo una volta
     await loadSMS();
     await loadTests();
 }
