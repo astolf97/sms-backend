@@ -109,25 +109,30 @@ app.post("/sms", (req, res) => {
     );
 
     if (!sim) {
-
         sim = {
             id: Date.now(),
             deviceId: sms.deviceId,
             simId: sms.simId,
-            phoneNumbers: [], // 🔥 array
+            phoneNumbers: [],
             lastSeen: Date.now()
         };
 
-
         sims.push(sim);
 
-    // 🔥 aggiungi numero se nuovo
-    if (sms.sender && !sim.phoneNumbers.includes(sms.sender)) {
-        sim.phoneNumbers.push(sms.sender);
+        console.log("🔥 Nuova SIM rilevata:", sim);
     }
 
-        console.log("🔥 Nuova SIM rilevata:", sim);
-    } else {
+    // ✅ SEMPRE aggiornare
+    sim.lastSeen = Date.now();
+
+    if (sms.sender && !sim.phoneNumbers.includes(sms.sender)) {
+        sim.phoneNumbers.push(sms.sender);
+
+        console.log("📞 Numero aggiunto a SIM:", sms.sender);
+    }
+
+    
+    else {
         sim.lastSeen = Date.now();
     }
 
@@ -243,7 +248,13 @@ setInterval(() => {
 // 📶 LISTA SIM
 //
 app.get("/sims", (req, res) => {
-    res.json(sims);
+
+    const result = sims.map(sim => ({
+        ...sim,
+        mainNumber: getMainNumber(sim.phoneNumbers)
+    }));
+
+    res.json(result);
 });
 
 //
