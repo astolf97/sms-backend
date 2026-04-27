@@ -127,18 +127,30 @@ async function loadDevices() {
         let simsHtml = "";
 
         d.sims.forEach(sim => {
+
+            const key = `${d.deviceId}-${sim.simId}`;
+            const existingInput = document.getElementById(`input-${key}`);
+
+            let value = sim.label || "";
+
+            // 🔥 se stai editando → NON toccare
+            if (editing && editingKey === key && existingInput) {
+                value = existingInput.value;
+            }
+
             simsHtml += `
                 <div style="margin-top:10px; padding:8px; background:#020617; border-radius:6px;">
                     <b>${sim.simId}</b><br>
 
                     <div style="display:flex; gap:6px; margin-top:5px;">
                         <input 
-                            id="input-${d.deviceId}-${sim.simId}"
+                            id="input-${key}"
                             placeholder="Numero SIM..."
-                            value="${sim.label || ""}"
-                            onfocus="startEditing()"
+                            value="${value}"
+                            onfocus="startEditing('${key}')"
                         >
-                        <button onclick="manualSave('${d.deviceId}', '${sim.simId}')">
+
+                        <button onclick="manualSave('${d.deviceId}', '${sim.simId}', '${key}')">
                             💾
                         </button>
                     </div>
@@ -201,14 +213,15 @@ function getSimLabel(deviceId, simId) {
 
 
 let editing = false;
+let editingKey = null; // 👈 quale input stai modificando
 
 function startEditing() {
     editing = true;
 }
 
-async function manualSave(deviceId, simId) {
+async function manualSave(deviceId, simId, key) {
 
-    const input = document.getElementById(`input-${deviceId}-${simId}`);
+    const input = document.getElementById(`input-${key}`);
     const label = input.value;
 
     await fetch(API + "/set-sim-label", {
@@ -219,12 +232,13 @@ async function manualSave(deviceId, simId) {
 
     console.log("✅ Salvato:", simId, label);
 
-    // 🔥 SOLO ORA sblocchi
+    // 🔥 reset editing
     editing = false;
+    editingKey = null;
 
-    // aggiorna UI
     await loadDevices();
 }
+
 //
 // 🧪 TEST
 //
@@ -253,6 +267,7 @@ async function createTest() {
 
     document.getElementById("expected").value = "";
 }
+
 
 function renderTests(data) {
     const container = document.getElementById("tests");
@@ -285,6 +300,11 @@ function renderTests(data) {
 
         container.appendChild(div);
     });
+}
+
+function startEditing(key) {
+    editing = true;
+    editingKey = key;
 }
 
 async function loadTests() {
