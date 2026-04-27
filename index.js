@@ -13,10 +13,29 @@ const io = new Server(server, {
     cors: { origin: "*" }
 });
 
+let devicesOnline = {};
+
 io.on("connection", (socket) => {
+
     console.log("Client connesso");
 
+    socket.on("register_device", (data) => {
+
+        const { deviceId, simId } = data;
+
+        devicesOnline[socket.id] = {
+            deviceId,
+            simId,
+            connectedAt: Date.now()
+        };
+
+        console.log("Device online:", deviceId, simId);
+    });
+
     socket.on("disconnect", () => {
+
+        delete devicesOnline[socket.id];
+
         console.log("Client disconnesso");
     });
 });
@@ -119,6 +138,12 @@ app.post("/register-sim", (req, res) => {
 app.get("/sims", (req, res) => {
     res.json(sims);
 });
+
+
+app.get("/devices-online", (req, res) => {
+    res.json(Object.values(devicesOnline));
+});
+
 
 const PORT = process.env.PORT || 3000;
 
