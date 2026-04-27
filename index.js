@@ -114,11 +114,17 @@ app.post("/sms", (req, res) => {
             id: Date.now(),
             deviceId: sms.deviceId,
             simId: sms.simId,
-            phoneNumber: sms.sender || "unknown",
+            phoneNumbers: [], // 🔥 array
             lastSeen: Date.now()
         };
 
+
         sims.push(sim);
+
+    // 🔥 aggiungi numero se nuovo
+    if (sms.sender && !sim.phoneNumbers.includes(sms.sender)) {
+        sim.phoneNumbers.push(sms.sender);
+    }
 
         console.log("🔥 Nuova SIM rilevata:", sim);
     } else {
