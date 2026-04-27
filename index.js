@@ -30,30 +30,27 @@ io.on("connection", (socket) => {
 
     socket.on("register_device", (data) => {
 
-        // 🔥 trova device già esistente (stesso deviceId)
         const existingEntry = Object.entries(devicesOnline).find(
             ([_, d]) => d.deviceId === data.deviceId
         );
 
-        const device = {
-            deviceId: data.deviceId,
-            model: data.model || "unknown",
-            phoneNumber: data.phoneNumber || "unknown",
-            sims: data.sims || [],
-            connectedAt: Date.now(),
-            socketId: socket.id
-        };
+        let existingSims = [];
 
-        // 🔥 se già esiste → rimuovi vecchio socket
         if (existingEntry) {
-            const [oldSocketId] = existingEntry;
+            const [oldSocketId, oldDevice] = existingEntry;
+            existingSims = oldDevice.sims || [];
             delete devicesOnline[oldSocketId];
         }
 
-        devicesOnline[socket.id] = device;
+        devicesOnline[socket.id] = {
+            deviceId: data.deviceId,
+            model: data.model || "unknown",
+            phoneNumber: data.phoneNumber || "unknown",
+            sims: existingSims, // 🔥 NON più data.sims
+            connectedAt: Date.now()
+        };
 
-        // 🔥 LOG COMPLETO
-        console.log("📱 DEVICE ONLINE");
+        console.log("📱 DEVICE ONLINE:", data.deviceId);
         console.log("ID:", device.deviceId);
         console.log("MODEL:", device.model);
         console.log("PHONE:", device.phoneNumber);
