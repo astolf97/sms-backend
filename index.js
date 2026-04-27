@@ -23,9 +23,9 @@ io.on("connection", (socket) => {
 
         const { deviceId, simId } = data;
 
-        devicesOnline[socket.id] = {
-            deviceId,
-            simId,
+        devicesOnline[data.deviceId] = {
+            deviceId: data.deviceId,
+            simId: data.simId,
             connectedAt: Date.now()
         };
 
