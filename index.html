@@ -146,8 +146,6 @@ async function setSimLabel(deviceId, simId, label) {
     console.log("✅ Label salvata:", simId, label);
 }
 
-await loadSimsCache();
-await loadSimSelect();
 
 //
 // 📩 SMS
@@ -295,22 +293,31 @@ async function loadTests() {
 //
 // 🔄 REFRESH
 //
-setInterval(() => {
-    loadSMS();
-    loadTests();
-    loadDevices();
-    loadSimsCache();
-    loadSimSelect();
+setInterval(async () => {
+    await loadSimsCache();
+    await loadSimSelect();
+    await loadDevices();
+    await loadSMS();
+    await loadTests();
 }, 2000);
 
 //
 // INIT
 //
-loadSMS();
-loadTests();
-loadDevices();
-loadSimsCache();
-loadSimSelect();
+//
+// INIT
+//
+async function init() {
+    await loadSimsCache();
+    await loadSimSelect();
+    await loadDevices();
+    await loadSMS();
+    await loadTests();
+}
+
+init();
+
+
 </script>
 
 </body>
