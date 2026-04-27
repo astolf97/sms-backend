@@ -26,25 +26,51 @@ let sims = [];
 //
 io.on("connection", (socket) => {
 
-    console.log("Client connesso");
+    console.log("🔌 Client connesso:", socket.id);
 
     socket.on("register_device", (data) => {
 
-        devicesOnline[socket.id] = {
+        // 🔥 trova device già esistente (stesso deviceId)
+        const existingEntry = Object.entries(devicesOnline).find(
+            ([_, d]) => d.deviceId === data.deviceId
+        );
+
+        const device = {
             deviceId: data.deviceId,
-            model: data.model,
-            phoneNumber: data.phoneNumber,
-            connectedAt: Date.now()
+            model: data.model || "unknown",
+            phoneNumber: data.phoneNumber || "unknown",
+            sims: data.sims || [],
+            connectedAt: Date.now(),
+            socketId: socket.id
         };
 
-        console.log("📱 Device online:", data.deviceId);
+        // 🔥 se già esiste → rimuovi vecchio socket
+        if (existingEntry) {
+            const [oldSocketId] = existingEntry;
+            delete devicesOnline[oldSocketId];
+        }
+
+        devicesOnline[socket.id] = device;
+
+        // 🔥 LOG COMPLETO
+        console.log("📱 DEVICE ONLINE");
+        console.log("ID:", device.deviceId);
+        console.log("MODEL:", device.model);
+        console.log("PHONE:", device.phoneNumber);
+        console.log("SIMS:", device.sims);
     });
 
     socket.on("disconnect", () => {
 
-        delete devicesOnline[socket.id];
+        const device = devicesOnline[socket.id];
 
-        console.log("Client disconnesso");
+        if (device) {
+            console.log("❌ Device offline:", device.deviceId);
+        } else {
+            console.log("❌ Client disconnesso:", socket.id);
+        }
+
+        delete devicesOnline[socket.id];
     });
 });
 
@@ -74,7 +100,7 @@ app.post("/sms", (req, res) => {
     console.log("📩 SMS ricevuto:", sms);
 
     //
-    // 🔥 AUTO-DETECT SIM (core del sistema)
+    // 🔥 AUTO-DETECT SIM (vera logica)
     //
     let sim = sims.find(
         s =>
@@ -100,12 +126,31 @@ app.post("/sms", (req, res) => {
     }
 
     //
+    // 🔥 aggiorna anche device ONLINE con questa SIM
+    //
+    Object.values(devicesOnline).forEach(d => {
+        if (d.deviceId === sms.deviceId) {
+
+            const exists = d.sims.find(s => s.simId === sms.simId);
+
+            if (!exists) {
+                d.sims.push({
+                    simId: sms.simId,
+                    phoneNumber: sms.sender || "unknown"
+                });
+
+                console.log("📶 SIM aggiunta al device:", sms.simId);
+            }
+        }
+    });
+
+    //
     // 🔥 REALTIME
     //
     io.emit("new_sms", sms);
 
     //
-    // 🧪 MATCH TEST (FIX IMPORTANTE)
+    // 🧪 MATCH TEST
     //
     tests.forEach(test => {
         if (test.status === "PENDING") {
@@ -121,6 +166,8 @@ app.post("/sms", (req, res) => {
                     test.status = "PASS";
                     test.result = sms.message;
                     test.completedAt = Date.now();
+
+                    console.log("✅ TEST PASS:", test.id);
                 }
             }
         }
@@ -144,8 +191,8 @@ app.post("/test", (req, res) => {
     const test = {
         id: Date.now(),
         expected: req.body.expected,
-        deviceId: req.body.deviceId,   // 🔥 IMPORTANTE
-        simId: req.body.simId,         // 🔥 IMPORTANTE
+        deviceId: req.body.deviceId,
+        simId: req.body.simId,
         status: "PENDING",
         createdAt: Date.now(),
         completedAt: null,
@@ -178,6 +225,8 @@ setInterval(() => {
             if (now - test.createdAt > test.timeout) {
                 test.status = "FAIL";
                 test.completedAt = Date.now();
+
+                console.log("❌ TEST FAIL:", test.id);
             }
         }
     });
@@ -185,7 +234,7 @@ setInterval(() => {
 }, 5000);
 
 //
-// 📶 LISTA SIM REALI
+// 📶 LISTA SIM
 //
 app.get("/sims", (req, res) => {
     res.json(sims);
