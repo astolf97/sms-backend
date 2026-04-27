@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SMS Dashboard</title>
+    <title>SMS Testing Dashboard</title>
 
     <style>
         body {
@@ -16,56 +16,49 @@
             padding: 20px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
 
         h1 {
             color: #22c55e;
-            margin: 0;
-        }
-
-        .stats {
-            font-size: 14px;
-            color: #94a3b8;
         }
 
         .container {
             padding: 20px;
         }
 
-        .controls {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
         input {
             padding: 10px;
             border-radius: 8px;
             border: none;
-            outline: none;
-            width: 200px;
+            margin-right: 10px;
         }
 
-        .sms {
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #22c55e;
+            color: black;
+            cursor: pointer;
+        }
+
+        .sms, .test {
             background: #020617;
-            padding: 15px;
+            padding: 12px;
             margin-bottom: 10px;
-            border-radius: 10px;
-            border-left: 4px solid #22c55e;
+            border-radius: 8px;
         }
 
-        .sender {
-            color: #22c55e;
-            font-weight: bold;
-        }
+        .pass { border-left: 4px solid #22c55e; }
+        .fail { border-left: 4px solid #ef4444; }
+        .pending { border-left: 4px solid #64748b; }
 
         .otp {
             color: #facc15;
             font-weight: bold;
         }
 
-        .time {
+        .small {
             font-size: 12px;
             color: #64748b;
         }
@@ -75,80 +68,114 @@
 <body>
 
 <header>
-    <h1>📩 SMS Dashboard</h1>
-    <div class="stats" id="stats">0 SMS</div>
+    <h1>📩 SMS + Testing Dashboard</h1>
 </header>
 
 <div class="container">
 
-    <div class="controls">
-        <input id="search" placeholder="🔍 Cerca testo...">
-        <input id="filterNumber" placeholder="📞 Filtra numero...">
-    </div>
+    <h2>📨 SMS</h2>
+    <div id="sms"></div>
 
-    <div id="list"></div>
+    <h2>🧪 Test SMS</h2>
+
+    <input id="expected" placeholder="Testo atteso (es: OTP)">
+    <button onclick="createTest()">Crea Test</button>
+
+    <div id="tests"></div>
 
 </div>
 
 <script>
-let allSMS = [];
+const API = "https://sms-backend-jp2t.onrender.com";
 
+// evidenzia OTP
 function highlightOTP(text) {
-    return text.replace(/\\b\\d{4,6}\\b/g, match => {
-        return `<span class="otp">${match}</span>`;
-    });
+    return text.replace(/\b\d{4,6}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-function renderSMS() {
-    const search = document.getElementById("search").value.toLowerCase();
-    const filterNumber = document.getElementById("filterNumber").value;
+// 📩 SMS
+async function loadSMS() {
+    const res = await fetch(API + "/sms");
+    const data = await res.json();
 
-    const list = document.getElementById("list");
-    list.innerHTML = "";
+    const container = document.getElementById("sms");
+    container.innerHTML = "";
 
-    const filtered = allSMS.filter(sms => {
-        return (
-            sms.message.toLowerCase().includes(search) &&
-            sms.sender.includes(filterNumber)
-        );
-    });
-
-    document.getElementById("stats").innerText = filtered.length + " SMS";
-
-    filtered.reverse().forEach(sms => {
+    data.slice().reverse().forEach(sms => {
         const div = document.createElement("div");
         div.className = "sms";
 
-        const time = new Date(sms.timestamp).toLocaleString();
-        const message = highlightOTP(sms.message);
-
         div.innerHTML = `
-            <div class="sender">${sms.sender}</div>
-            <div>${message}</div>
-            <div class="time">${time}</div>
+            <b>${sms.sender}</b><br>
+            ${highlightOTP(sms.message)}<br>
+            <span class="small">${new Date(sms.timestamp).toLocaleString()}</span>
         `;
 
-        list.appendChild(div);
+        container.appendChild(div);
     });
 }
 
-async function loadSMS() {
-    try {
-        const res = await fetch("https://sms-backend-jp2t.onrender.com/sms");
-        allSMS = await res.json();
-        renderSMS();
-    } catch (e) {
-        console.log("Errore:", e);
-    }
+// 🧪 TEST
+async function createTest() {
+    const expected = document.getElementById("expected").value;
+
+    await fetch(API + "/test", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ expected })
+    });
+
+    document.getElementById("expected").value = "";
 }
 
-document.getElementById("search").addEventListener("input", renderSMS);
-document.getElementById("filterNumber").addEventListener("input", renderSMS);
+function renderTests(data) {
+    const container = document.getElementById("tests");
+    container.innerHTML = "";
 
-// refresh automatico
-setInterval(loadSMS, 2000);
+    data.slice().reverse().forEach(test => {
+        const div = document.createElement("div");
+
+        let cls = "pending";
+        let status = "⏳ PENDING";
+
+        if (test.status === "PASS") {
+            cls = "pass";
+            status = "✅ PASS";
+        }
+
+        if (test.status === "FAIL") {
+            cls = "fail";
+            status = "❌ FAIL";
+        }
+
+        div.className = "test " + cls;
+
+        div.innerHTML = `
+            <b>${test.expected}</b><br>
+            ${status}<br>
+            <span class="small">
+                creato: ${new Date(test.createdAt).toLocaleTimeString()}
+            </span>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+async function loadTests() {
+    const res = await fetch(API + "/tests");
+    const data = await res.json();
+    renderTests(data);
+}
+
+// refresh continuo
+setInterval(() => {
+    loadSMS();
+    loadTests();
+}, 2000);
 
 loadSMS();
+loadTests();
 </script>
 
 </body>
