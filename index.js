@@ -47,7 +47,7 @@ io.on("connection", (socket) => {
             deviceId: data.deviceId,
             model: data.model || "unknown",
             phoneNumber: data.phoneNumber || "unknown",
-            sims: existingSims,
+            sims: existingSims || [],
             connectedAt: Date.now()
         };
 
@@ -101,7 +101,7 @@ app.post("/sms", (req, res) => {
     console.log("📩 SMS ricevuto:", sms);
 
     //
-    // 🔥 AUTO-DETECT SIM (vera logica)
+    // 🔥 SOLO SIM DETECTION (STOP)
     //
     let sim = sims.find(
         s =>
@@ -114,7 +114,7 @@ app.post("/sms", (req, res) => {
             id: Date.now(),
             deviceId: sms.deviceId,
             simId: sms.simId,
-            label: null,        // 👈 numero reale (manuale)
+            label: null,        // 👈 numero SIM manuale
             lastSeen: Date.now()
         };
 
@@ -123,42 +123,23 @@ app.post("/sms", (req, res) => {
         console.log("🔥 Nuova SIM rilevata:", sim.simId);
     }
 
-    // ✅ SEMPRE aggiornare
     sim.lastSeen = Date.now();
 
-    if (sms.sender && !sim.phoneNumbers.includes(sms.sender)) {
-        sim.phoneNumbers.push(sms.sender);
-
-        console.log("📞 Numero aggiunto a SIM:", sms.sender);
-    }
-
-    
-    else {
-        sim.lastSeen = Date.now();
-    }
-
     //
-    // 🔥 aggiorna anche device ONLINE con questa SIM
+    // 🔥 AGGIORNA DEVICE ONLINE
     //
     Object.values(devicesOnline).forEach(d => {
         if (d.deviceId === sms.deviceId) {
 
             const exists = d.sims.find(s => s.simId === sms.simId);
 
-            if (!sim) {
-                sim = {
-                    id: Date.now(),
-                    deviceId: sms.deviceId,
+            if (!exists) {
+                d.sims.push({
                     simId: sms.simId,
-                    senders: [], // 🔥 non phoneNumber
-                    lastSeen: Date.now()
-                };
+                    label: null
+                });
 
-                sims.push(sim);
-            }
-
-            if (sms.sender && !sim.senders.includes(sms.sender)) {
-                sim.senders.push(sms.sender);
+                console.log("📶 SIM aggiunta al device:", sms.simId);
             }
         }
     });
@@ -169,7 +150,7 @@ app.post("/sms", (req, res) => {
     io.emit("new_sms", sms);
 
     //
-    // 🧪 MATCH TEST
+    // 🧪 TEST
     //
     tests.forEach(test => {
         if (test.status === "PENDING") {
@@ -271,13 +252,7 @@ setInterval(() => {
 // 📶 LISTA SIM
 //
 app.get("/sims", (req, res) => {
-
-    const result = sims.map(sim => ({
-        ...sim,
-        mainNumber: getMainNumber(sim.phoneNumbers)
-    }));
-
-    res.json(result);
+    res.json(sims);
 });
 
 //
