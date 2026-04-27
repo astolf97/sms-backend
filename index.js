@@ -114,13 +114,13 @@ app.post("/sms", (req, res) => {
             id: Date.now(),
             deviceId: sms.deviceId,
             simId: sms.simId,
-            phoneNumbers: [],
+            label: null,        // 👈 numero reale (manuale)
             lastSeen: Date.now()
         };
 
         sims.push(sim);
 
-        console.log("🔥 Nuova SIM rilevata:", sim);
+        console.log("🔥 Nuova SIM rilevata:", sim.simId);
     }
 
     // ✅ SEMPRE aggiornare
@@ -223,6 +223,21 @@ app.post("/test", (req, res) => {
     console.log("🧪 Nuovo test:", test);
 
     res.json(test);
+});
+
+app.post("/set-sim-label", (req, res) => {
+
+    const { deviceId, simId, label } = req.body;
+
+    const sim = sims.find(
+        s => s.deviceId === deviceId && s.simId === simId
+    );
+
+    if (sim) {
+        sim.label = label;
+    }
+
+    res.json({ ok: true });
 });
 
 //
