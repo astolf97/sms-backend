@@ -1055,6 +1055,14 @@ function getSimLabel(deviceId, simId) {
     return "⚠ da configurare";
 }
 
+function getSimLabelCountryOnly(deviceId, simId) {
+    const sim = S.simsCache.find(s => s.deviceId === deviceId && s.simId === simId);
+    if (!sim) return "—";
+    // simsCache for users already has country-grouped labels
+    if (sim.label?.trim()) return sim.label;
+    return "—";
+}
+
 function togglePw(inputId, btn) {
     const el = document.getElementById(inputId);
     if (!el) return;
@@ -1282,7 +1290,40 @@ async function loadDevices() {
     if (!data) return;
 
     const container = document.getElementById("devices");
+    const isAdmin   = S.user?.role === "admin";
 
+    // ── USER VIEW: country summary only
+    if (!isAdmin) {
+        if (data.redacted) {
+            const { summary, total } = data;
+            if (!summary?.length) {
+                container.innerHTML = `<div class="empty">Nessun device online</div>`;
+                return;
+            }
+
+            let html = `<div class="card" style="margin-bottom:14px">
+                <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:10px">DEVICE ONLINE</div>
+                <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--green)">${total}</div>
+                <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px">dispositivi connessi</div>
+            </div>`;
+
+            summary.forEach(c => {
+                html += `<div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-family:var(--mono);font-size:14px">${esc(c.country)}</span>
+                        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${c.sims} SIM</span>
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = `<div class="empty">Nessun device online</div>`;
+        }
+        return;
+    }
+
+    // ── ADMIN VIEW: full detail
     if (!data.length) { container.innerHTML = `<div class="empty">Nessun device online</div>`; return; }
 
     let html = "";
@@ -1355,20 +1396,28 @@ function renderSMS() {
     const c       = document.getElementById("sms");
     const search  = (document.getElementById("smsSearch")?.value || "").toLowerCase();
     const prefix  = activeCountryPrefix;
+    const isAdmin = S.user?.role === "admin";
 
     let filtered = smsCache.slice().reverse();
 
-    // country filter
+    // country filter — for users, sender is already a country label (e.g. "🇮🇹 IT")
     if (prefix) {
         filtered = filtered.filter(sms => {
             const s = sms.sender || "";
-            // match +39... or 0039...
+            if (!isAdmin) {
+                // user sees redacted sender like "🇮🇹 IT" — match by country code
+                const bare = prefix.startsWith("+") ? prefix.slice(1) : prefix;
+                const ctryLabel = COUNTRY_MAP.find(([p]) => {
+                    const b = p.startsWith("+") ? p.slice(1) : p;
+                    return b === bare;
+                });
+                return ctryLabel ? s.includes(ctryLabel[1]) : true;
+            }
             const bare3 = prefix.startsWith("+") ? prefix.slice(1) : prefix;
             return s.startsWith("+" + bare3) || s.startsWith(bare3) || s.startsWith("00" + bare3);
         });
     }
 
-    // text search
     if (search) {
         filtered = filtered.filter(sms =>
             (sms.sender  || "").toLowerCase().includes(search) ||
@@ -1382,8 +1431,8 @@ function renderSMS() {
     }
 
     c.innerHTML = filtered.map(sms => {
-        // detect country flag from sender prefix
-        const flag = getCountryFlag(sms.sender || "");
+        const flag    = isAdmin ? getCountryFlag(sms.sender || "") : "";
+        const simLabel = isAdmin ? getSimLabel(sms.deviceId, sms.simId) : getSimLabelCountryOnly(sms.deviceId, sms.simId);
         return `
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
@@ -1391,7 +1440,7 @@ function renderSMS() {
                 <span class="card-sub">${fmtTime(sms.timestamp)}</span>
             </div>
             <div class="sms-msg">${highlightOTP(esc(sms.message))}</div>
-            <div class="card-sub" style="margin-top:4px">SIM: ${esc(getSimLabel(sms.deviceId, sms.simId))}</div>
+            <div class="card-sub" style="margin-top:4px">SIM: ${esc(simLabel)}</div>
         </div>`;
     }).join("");
 }
@@ -1444,31 +1493,48 @@ function renderSimNumberList() {
     const countEl   = document.getElementById("simCount");
     if (!container) return;
 
+    const isAdmin = S.user?.role === "admin";
+
     // filter sims by country prefix
-    let sims = S.simsCache.filter(sim => {
+    let filteredSims = S.simsCache.filter(sim => {
         const num = (sim.label || sim.candidate || "").trim();
         if (!testCountryPrefix) return true;
-        const p = testCountryPrefix;
-        const bare = p.startsWith("+") ? p.slice(1) : p;        // "39"
-        return num.startsWith("+" + bare)   // +39...
-            || num.startsWith(bare)          // 39...
-            || num.startsWith("00" + bare);  // 0039...
+        const p    = testCountryPrefix;
+        const bare = p.startsWith("+") ? p.slice(1) : p;
+        if (!isAdmin) {
+            // for users, label is already like "🇮🇹 IT (2 SIM)"
+            return num.includes(bare) || num.includes(p);
+        }
+        return num.startsWith("+" + bare) || num.startsWith(bare) || num.startsWith("00" + bare);
     });
 
-    countEl.textContent = sims.length ? `(${sims.length})` : "";
+    countEl.textContent = filteredSims.length ? `(${filteredSims.length})` : "";
 
-    if (!sims.length) {
-        container.innerHTML = `<div class="empty" style="padding:16px">Nessun numero ${testCountryPrefix || ""} disponibile</div>`;
+    if (!filteredSims.length) {
+        container.innerHTML = `<div class="empty" style="padding:16px">Nessuna SIM ${testCountryPrefix || ""} disponibile</div>`;
         return;
     }
 
-    container.innerHTML = sims.map(sim => {
-        const key    = sim.deviceId + "||" + sim.simId;
-        const label  = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
-        const flag   = getCountryFlag(label);
-        const isConf = !!sim.label?.trim();
-        const sel    = selectedSimKey === key;
+    container.innerHTML = filteredSims.map(sim => {
+        const key   = sim.deviceId + "||" + sim.simId;
+        const label = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
+        const flag  = getCountryFlag(label);
+        const sel   = selectedSimKey === key;
 
+        // user view: show country only, no phone number, no deviceId
+        if (!isAdmin || sim.isRedacted) {
+            return `<div class="sim-num-card${sel ? " selected" : ""}"
+                         onclick="selectSim('${key.replace(/'/g,"\'")}')">
+                <div class="sim-num-flag" style="font-size:22px">${flag || "🌍"}</div>
+                <div class="sim-num-info">
+                    <div class="sim-num-label">${esc(label)}</div>
+                </div>
+                <div class="sim-num-check">✓</div>
+            </div>`;
+        }
+
+        // admin view: full detail
+        const isConf = !!sim.label?.trim();
         return `<div class="sim-num-card${sel ? " selected" : ""}"
                      onclick="selectSim('${key.replace(/'/g,"\'")}')">
             <div class="sim-num-flag">${flag || "📱"}</div>

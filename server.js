@@ -3,7 +3,7 @@ const cors     = require("cors");
 const path     = require("path");
 const http     = require("http");
 const crypto   = require("crypto");
-const bcrypt   = require("bcryptjs");
+const bcrypt   = require("bcrypt");
 const jwt      = require("jsonwebtoken");
 const { Server } = require("socket.io");
 
@@ -337,9 +337,110 @@ app.post("/sms", authDevice, (req, res) => {
     res.json({ status: "ok" });
 });
 
-app.get("/sms",            requireAuth, (req, res) => res.json(smsList));
-app.get("/sims",           requireAuth, (req, res) => res.json(sims));
-app.get("/devices-online", requireAuth, (req, res) => res.json(Object.values(devicesOnline)));
+app.get("/sms", requireAuth, (req, res) => {
+    if (req.user.role === "admin") return res.json(smsList);
+
+    // user: redact phone numbers — show only country code
+    const prefixMap = {
+        "+39":"🇮🇹 IT","+44":"🇬🇧 UK","+1":"🇺🇸 US","+49":"🇩🇪 DE","+33":"🇫🇷 FR",
+        "+34":"🇪🇸 ES","+31":"🇳🇱 NL","+48":"🇵🇱 PL","+55":"🇧🇷 BR","+91":"🇮🇳 IN",
+        "+86":"🇨🇳 CN","+7":"🇷🇺 RU"
+    };
+
+    function redactSender(sender) {
+        if (!sender) return "—";
+        for (const [prefix] of Object.entries(prefixMap)) {
+            const bare = prefix.slice(1);
+            if (sender.startsWith(prefix) || sender.startsWith(bare) || sender.startsWith("00"+bare)) {
+                return prefixMap[prefix];
+            }
+        }
+        return "🌍 INTL";
+    }
+
+    res.json(smsList.map(s => ({ ...s, sender: redactSender(s.sender) })));
+});
+
+app.get("/sims", requireAuth, (req, res) => {
+    if (req.user.role === "admin") return res.json(sims);
+
+    // user: show country only, no numbers, no deviceId detail
+    const prefixMap = {
+        "+39":"🇮🇹 IT","+44":"🇬🇧 UK","+1":"🇺🇸 US","+49":"🇩🇪 DE","+33":"🇫🇷 FR",
+        "+34":"🇪🇸 ES","+31":"🇳🇱 NL","+48":"🇵🇱 PL","+55":"🇧🇷 BR","+91":"🇮🇳 IN",
+        "+86":"🇨🇳 CN","+7":"🇷🇺 RU"
+    };
+
+    function getCountry(num) {
+        if (!num) return null;
+        for (const [prefix, label] of Object.entries(prefixMap)) {
+            const bare = prefix.slice(1);
+            if (num.startsWith(prefix) || num.startsWith(bare) || num.startsWith("00"+bare)) return label;
+        }
+        return "🌍 INTL";
+    }
+
+    // group by country — count only
+    const countryCount = {};
+    sims.forEach(sim => {
+        const num     = sim.label || sim.candidate || "";
+        const country = getCountry(num) || "❓ Sconosciuto";
+        if (!countryCount[country]) countryCount[country] = { country, count: 0, simId: `country-${country}`, deviceId: "—", label: country, candidate: null };
+        countryCount[country].count++;
+    });
+
+    res.json(Object.values(countryCount).map(c => ({
+        simId:    c.simId,
+        deviceId: "—",
+        label:    `${c.country} (${c.count} SIM)`,
+        candidate: null,
+        isRedacted: true
+    })));
+});
+
+app.get("/devices-online", requireAuth, (req, res) => {
+    if (req.user.role === "admin") return res.json(Object.values(devicesOnline));
+
+    // user: count only per country, no deviceId/model/numbers
+    const prefixMap = {
+        "+39":"🇮🇹 IT","+44":"🇬🇧 UK","+1":"🇺🇸 US","+49":"🇩🇪 DE","+33":"🇫🇷 FR",
+        "+34":"🇪🇸 ES","+31":"🇳🇱 NL","+48":"🇵🇱 PL","+55":"🇧🇷 BR","+91":"🇮🇳 IN",
+        "+86":"🇨🇳 CN","+7":"🇷🇺 RU"
+    };
+
+    function getCountry(num) {
+        for (const [prefix, label] of Object.entries(prefixMap)) {
+            const bare = prefix.slice(1);
+            if (num.startsWith(prefix) || num.startsWith(bare) || num.startsWith("00"+bare)) return label;
+        }
+        return "🌍 INTL";
+    }
+
+    const countryMap = {};
+    Object.values(devicesOnline).forEach(device => {
+        (device.sims || []).forEach(sim => {
+            const cached = sims.find(s => s.deviceId === device.deviceId && s.simId === sim.simId);
+            const num    = cached?.label || cached?.candidate || "";
+            const ctry   = getCountry(num) || "❓";
+            if (!countryMap[ctry]) countryMap[ctry] = { country: ctry, devices: 0, sims: 0 };
+            countryMap[ctry].sims++;
+        });
+        // count unique devices per country (simplified: 1 per device)
+        const deviceCountries = new Set();
+        (device.sims || []).forEach(sim => {
+            const cached = sims.find(s => s.deviceId === device.deviceId && s.simId === sim.simId);
+            const num    = cached?.label || cached?.candidate || "";
+            deviceCountries.add(getCountry(num) || "❓");
+        });
+        deviceCountries.forEach(c => {
+            if (!countryMap[c]) countryMap[c] = { country: c, devices: 0, sims: 0 };
+            countryMap[c].devices++;
+        });
+    });
+
+    res.json({ redacted: true, summary: Object.values(countryMap), total: Object.keys(devicesOnline).length });
+});
+
 app.get("/tests",          requireAuth, (req, res) => res.json(tests));
 
 // ────────────────────────────────────────────
