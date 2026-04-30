@@ -39,8 +39,10 @@
         }
 
         /* ══ SCREENS ══ */
-        .screen { display: none; }
-        .screen.active { display: block; }
+        .screen { display: none !important; }
+        #screen-login.active     { display: flex !important; }
+        #screen-dashboard.active { display: flex !important; }
+        #screen-admin.active     { display: flex !important; }
 
         /* ══════════════════════════════════════
            LOGIN
@@ -770,13 +772,7 @@ async function api(path, opts = {}) {
 // ══════════════════════════════════════
 // SCREENS
 // ══════════════════════════════════════
-function showScreen(name) {
-    ["login","dashboard","admin"].forEach(id => {
-        const el = document.getElementById(`screen-${id}`);
-        el.classList.remove("active");
-    });
-    document.getElementById(`screen-${name}`).classList.add("active");
-}
+// showScreen defined below with admin support
 
 // ══════════════════════════════════════
 // LOGIN
@@ -1145,7 +1141,6 @@ async function loadUsers() {
 }
 
 // ── SWITCH TO ADMIN SCREEN
-const _origShowScreen = showScreen;
 async function showScreen(name) {
     ["login","dashboard","admin"].forEach(id => {
         document.getElementById(`screen-${id}`).classList.remove("active");
