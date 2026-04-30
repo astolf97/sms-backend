@@ -1018,6 +1018,7 @@ const S = {
     user:      null,
     simsCache: [],
     editingKey: null,
+    renamingDevice: null,
     polls:     [],
 
     // Lockout / attempts (per-tab)
@@ -1351,10 +1352,29 @@ async function loadDevices() {
 
         if (!d.sims?.length) simsHtml = `<div class="card-sub" style="margin-top:8px">Nessuna SIM</div>`;
 
+        const nickname = d.nickname || d.deviceId;
+        const deviceKey = `dev__${d.deviceId}`;
+        const isRenamingDev = S.renamingDevice === d.deviceId;
+
         html += `
             <div class="card device">
-                <div class="card-title">📱 ${esc(d.deviceId)}</div>
-                <div class="card-sub">${esc(d.model || "unknown")}</div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+                    <div>
+                        <div class="card-title">📱 ${esc(nickname)}</div>
+                        ${nickname !== d.deviceId ? `<div class="card-sub" style="font-size:10px;opacity:.5">${esc(d.deviceId)}</div>` : ""}
+                        <div class="card-sub">${esc(d.model || "unknown")}</div>
+                    </div>
+                    <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;margin-top:2px"
+                            onclick="startRenameDevice('${escA(d.deviceId)}','${escA(nickname)}')">✏️</button>
+                </div>
+                <div id="rename-${escA(d.deviceId)}" style="display:none;margin-bottom:8px">
+                    <div class="sim-row">
+                        <input id="rename-input-${escA(d.deviceId)}" value="${escA(nickname)}" placeholder="Nome dispositivo..."
+                               onkeydown="if(event.key==='Enter') confirmRenameDevice('${escA(d.deviceId)}')">
+                        <button class="btn btn-green" onclick="confirmRenameDevice('${escA(d.deviceId)}')">✓</button>
+                        <button class="btn btn-ghost" onclick="cancelRenameDevice('${escA(d.deviceId)}')">✕</button>
+                    </div>
+                </div>
                 ${simsHtml}
             </div>`;
     });
@@ -2092,6 +2112,43 @@ async function deleteSchedule(id) {
     await api(`/schedules/${id}`, { method:"DELETE" });
     showToast("🗑 Schedule eliminato");
     await loadScheduler();
+}
+
+// ══════════════════════════════════════
+// DEVICE RENAME (dashboard)
+// ══════════════════════════════════════
+function startRenameDevice(deviceId, currentName) {
+    S.renamingDevice = deviceId;
+    const box = document.getElementById(`rename-${deviceId}`);
+    if (box) {
+        box.style.display = "block";
+        const input = document.getElementById(`rename-input-${deviceId}`);
+        if (input) { input.value = currentName; input.focus(); input.select(); }
+    }
+}
+
+function cancelRenameDevice(deviceId) {
+    S.renamingDevice = null;
+    const box = document.getElementById(`rename-${deviceId}`);
+    if (box) box.style.display = "none";
+}
+
+async function confirmRenameDevice(deviceId) {
+    const input = document.getElementById(`rename-input-${deviceId}`);
+    if (!input) return;
+    const nickname = input.value.trim();
+    if (!nickname) { showToast("⚠ Inserisci un nome", "error"); return; }
+
+    const res = await api(`/device/${deviceId}/rename`, {
+        method: "PATCH",
+        body: JSON.stringify({ nickname })
+    });
+
+    if (res) {
+        showToast(`✅ Dispositivo rinominato: ${nickname}`);
+        S.renamingDevice = null;
+        await loadDevices();
+    }
 }
 
 // ══════════════════════════════════════

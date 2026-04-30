@@ -471,7 +471,15 @@ app.get("/sims", requireAuth, (req, res) => {
 });
 
 app.get("/devices-online", requireAuth, (req, res) => {
-    if (req.user.role === "admin") return res.json(Object.values(devicesOnline));
+    if (req.user.role === "admin") {
+        // Enrich each device with nickname from deviceMeta
+        const enriched = Object.values(devicesOnline).map(d => ({
+            ...d,
+            nickname: deviceMeta[d.deviceId]?.nickname || null,
+            appUserId: deviceMeta[d.deviceId]?.appUserId || d.appUserId || null
+        }));
+        return res.json(enriched);
+    }
 
     // user: count only per country, no deviceId/model/numbers
     const prefixMap = {
@@ -656,7 +664,7 @@ app.get("/app/me", requireAppAuth, (req, res) => {
     });
 });
 
-// Rename device (only owner can rename)
+// Rename device — app user (owner only)
 app.patch("/app/device/:deviceId/rename", requireAppAuth, (req, res) => {
     const { deviceId } = req.params;
     const { nickname }  = req.body;
@@ -670,7 +678,26 @@ app.patch("/app/device/:deviceId/rename", requireAppAuth, (req, res) => {
     if (!deviceMeta[deviceId]) deviceMeta[deviceId] = {};
     deviceMeta[deviceId].nickname = nickname.trim();
 
-    console.log(`✏️  Device rinominato: ${deviceId} → ${nickname.trim()}`);
+    // Emit realtime update to dashboard
+    io.emit("device_renamed", { deviceId, nickname: nickname.trim() });
+
+    console.log(`✏️  Device rinominato (app): ${deviceId} → ${nickname.trim()}`);
+    res.json({ ok: true, nickname: nickname.trim() });
+});
+
+// Rename device — dashboard admin
+app.patch("/device/:deviceId/rename", requireAdmin, (req, res) => {
+    const { deviceId } = req.params;
+    const { nickname }  = req.body;
+
+    if (!nickname?.trim()) return res.status(400).json({ error: "Nickname obbligatorio" });
+
+    if (!deviceMeta[deviceId]) deviceMeta[deviceId] = {};
+    deviceMeta[deviceId].nickname = nickname.trim();
+
+    io.emit("device_renamed", { deviceId, nickname: nickname.trim() });
+
+    console.log(`✏️  Device rinominato (dashboard): ${deviceId} → ${nickname.trim()}`);
     res.json({ ok: true, nickname: nickname.trim() });
 });
 
