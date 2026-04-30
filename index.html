@@ -1137,9 +1137,8 @@ function renderSMS() {
         filtered = filtered.filter(sms => {
             const s = sms.sender || "";
             // match +39... or 0039...
-            const intl = s.startsWith(prefix);
-            const zero = prefix.startsWith("+") && s.startsWith("00" + prefix.slice(1));
-            return intl || zero;
+            const bare3 = prefix.startsWith("+") ? prefix.slice(1) : prefix;
+            return s.startsWith("+" + bare3) || s.startsWith(bare3) || s.startsWith("00" + bare3);
         });
     }
 
@@ -1180,8 +1179,8 @@ const COUNTRY_MAP = [
 
 function getCountryFlag(sender) {
     for (const [prefix, flag] of COUNTRY_MAP) {
-        if (sender.startsWith(prefix)) return flag;
-        if (sender.startsWith("00" + prefix.slice(1))) return flag;
+        const bare2 = prefix.startsWith("+") ? prefix.slice(1) : prefix;
+        if (sender.startsWith("+" + bare2) || sender.startsWith(bare2) || sender.startsWith("00" + bare2)) return flag;
     }
     return "";
 }
@@ -1222,7 +1221,11 @@ function renderSimNumberList() {
     let sims = S.simsCache.filter(sim => {
         const num = (sim.label || sim.candidate || "").trim();
         if (!testCountryPrefix) return true;
-        return num.startsWith(testCountryPrefix) || num.startsWith("00" + testCountryPrefix.slice(1));
+        const p = testCountryPrefix;
+        const bare = p.startsWith("+") ? p.slice(1) : p;        // "39"
+        return num.startsWith("+" + bare)   // +39...
+            || num.startsWith(bare)          // 39...
+            || num.startsWith("00" + bare);  // 0039...
     });
 
     countEl.textContent = sims.length ? `(${sims.length})` : "";
