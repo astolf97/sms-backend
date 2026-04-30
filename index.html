@@ -446,6 +446,29 @@
         #toast.error   { background: var(--surface); border: 1px solid var(--red);   color: var(--red); }
         #toast.info    { background: var(--surface); border: 1px solid var(--blue);  color: var(--blue); }
 
+
+        /* ── COUNTRY FILTER ── */
+        .cf-btn {
+            font-family: var(--mono); font-size: 11px; font-weight: 600;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text-dim);
+            padding: 4px 9px; cursor: pointer;
+            transition: all .15s; white-space: nowrap;
+        }
+        .cf-btn:hover   { border-color: var(--blue); color: var(--blue); }
+        .cf-btn.cf-active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+        /* ── COUNTRY FILTER ── */
+        .cf-btn {
+            font-family: var(--mono); font-size: 11px; font-weight: 600;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text-dim);
+            padding: 4px 9px; cursor: pointer;
+            transition: all .15s; white-space: nowrap;
+        }
+        .cf-btn:hover    { border-color: var(--blue); color: var(--blue); }
+        .cf-btn.cf-active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
         /* ── scrollbar ── */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -519,9 +542,33 @@
             <div class="panel-title">📱 Devices Online</div>
             <div id="devices"></div>
         </div>
-        <div class="panel">
+        <div class="panel" style="display:flex;flex-direction:column;">
             <div class="panel-title">📨 SMS Ricevuti</div>
-            <div id="sms"></div>
+
+            <!-- COUNTRY FILTER -->
+            <div id="countryFilter" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--border);">
+                <button class="cf-btn cf-active" data-prefix="" onclick="setCountryFilter(this,'')">🌍 Tutti</button>
+                <button class="cf-btn" data-prefix="+39"  onclick="setCountryFilter(this,'+39')">🇮🇹 IT</button>
+                <button class="cf-btn" data-prefix="+44"  onclick="setCountryFilter(this,'+44')">🇬🇧 UK</button>
+                <button class="cf-btn" data-prefix="+1"   onclick="setCountryFilter(this,'+1')">🇺🇸 US</button>
+                <button class="cf-btn" data-prefix="+49"  onclick="setCountryFilter(this,'+49')">🇩🇪 DE</button>
+                <button class="cf-btn" data-prefix="+33"  onclick="setCountryFilter(this,'+33')">🇫🇷 FR</button>
+                <button class="cf-btn" data-prefix="+34"  onclick="setCountryFilter(this,'+34')">🇪🇸 ES</button>
+                <button class="cf-btn" data-prefix="+31"  onclick="setCountryFilter(this,'+31')">🇳🇱 NL</button>
+                <button class="cf-btn" data-prefix="+48"  onclick="setCountryFilter(this,'+48')">🇵🇱 PL</button>
+                <button class="cf-btn" data-prefix="+55"  onclick="setCountryFilter(this,'+55')">🇧🇷 BR</button>
+                <button class="cf-btn" data-prefix="+91"  onclick="setCountryFilter(this,'+91')">🇮🇳 IN</button>
+                <button class="cf-btn" data-prefix="+86"  onclick="setCountryFilter(this,'+86')">🇨🇳 CN</button>
+                <button class="cf-btn" data-prefix="+7"   onclick="setCountryFilter(this,'+7')">🇷🇺 RU</button>
+            </div>
+
+            <!-- SEARCH -->
+            <div style="margin-bottom:9px;position:relative;">
+                <input id="smsSearch" placeholder="Cerca mittente o testo..." oninput="renderSMS()"
+                       style="padding-left:10px;font-size:12px;">
+            </div>
+
+            <div id="sms" style="flex:1;overflow-y:auto;min-height:0;"></div>
         </div>
         <div class="panel">
             <div class="panel-title">🧪 Test SMS</div>
@@ -999,22 +1046,83 @@ async function saveSim(deviceId, simId, key) {
 }
 
 // ── SMS
-async function loadSMS() {
-    const data = await api("/sms");
-    if (!data) return;
+// ── SMS cache + filter state
+let smsCache = [];
+let activeCountryPrefix = "";
 
-    const c = document.getElementById("sms");
-    if (!data.length) { c.innerHTML = `<div class="empty">Nessun SMS ricevuto</div>`; return; }
+function setCountryFilter(btn, prefix) {
+    activeCountryPrefix = prefix;
+    document.querySelectorAll(".cf-btn").forEach(b => b.classList.remove("cf-active"));
+    btn.classList.add("cf-active");
+    renderSMS();
+}
 
-    c.innerHTML = data.slice().reverse().map(sms => `
+function renderSMS() {
+    const c       = document.getElementById("sms");
+    const search  = (document.getElementById("smsSearch")?.value || "").toLowerCase();
+    const prefix  = activeCountryPrefix;
+
+    let filtered = smsCache.slice().reverse();
+
+    // country filter
+    if (prefix) {
+        filtered = filtered.filter(sms => {
+            const s = sms.sender || "";
+            // match +39... or 0039...
+            const intl = s.startsWith(prefix);
+            const zero = prefix.startsWith("+") && s.startsWith("00" + prefix.slice(1));
+            return intl || zero;
+        });
+    }
+
+    // text search
+    if (search) {
+        filtered = filtered.filter(sms =>
+            (sms.sender  || "").toLowerCase().includes(search) ||
+            (sms.message || "").toLowerCase().includes(search)
+        );
+    }
+
+    if (!filtered.length) {
+        c.innerHTML = `<div class="empty">${smsCache.length ? "Nessun risultato" : "Nessun SMS ricevuto"}</div>`;
+        return;
+    }
+
+    c.innerHTML = filtered.map(sms => {
+        // detect country flag from sender prefix
+        const flag = getCountryFlag(sms.sender || "");
+        return `
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-                <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)">${esc(sms.sender)}</span>
+                <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)">${flag} ${esc(sms.sender)}</span>
                 <span class="card-sub">${fmtTime(sms.timestamp)}</span>
             </div>
             <div class="sms-msg">${highlightOTP(esc(sms.message))}</div>
             <div class="card-sub" style="margin-top:4px">SIM: ${esc(getSimLabel(sms.deviceId, sms.simId))}</div>
-        </div>`).join("");
+        </div>`;
+    }).join("");
+}
+
+const COUNTRY_MAP = [
+    ["+1",   "🇺🇸"], ["+7",   "🇷🇺"], ["+31",  "🇳🇱"],
+    ["+33",  "🇫🇷"], ["+34",  "🇪🇸"], ["+39",  "🇮🇹"],
+    ["+44",  "🇬🇧"], ["+48",  "🇵🇱"], ["+49",  "🇩🇪"],
+    ["+55",  "🇧🇷"], ["+86",  "🇨🇳"], ["+91",  "🇮🇳"],
+];
+
+function getCountryFlag(sender) {
+    for (const [prefix, flag] of COUNTRY_MAP) {
+        if (sender.startsWith(prefix)) return flag;
+        if (sender.startsWith("00" + prefix.slice(1))) return flag;
+    }
+    return "";
+}
+
+async function loadSMS() {
+    const data = await api("/sms");
+    if (!data) return;
+    smsCache = data;
+    renderSMS();
 }
 
 // ── SIMS
