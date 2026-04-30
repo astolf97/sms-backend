@@ -1,399 +1,701 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMS Testing Dashboard</title>
-
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg:        #080c14;
+            --surface:   #0d1424;
+            --surface2:  #111827;
+            --border:    #1e2d45;
+            --green:     #00e676;
+            --green-dim: #00e67622;
+            --red:       #ff3d57;
+            --red-dim:   #ff3d5720;
+            --yellow:    #ffd740;
+            --yellow-dim:#ffd74020;
+            --slate:     #334155;
+            --muted:     #475569;
+            --text:      #e2e8f0;
+            --text-dim:  #64748b;
+            --mono:      'JetBrains Mono', monospace;
+            --sans:      'DM Sans', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: Arial;
-            background: #0f172a;
-            color: #e2e8f0;
-            margin: 0;
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
 
+        /* ── HEADER ── */
         header {
-            background: #020617;
-            padding: 20px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            height: 60px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        h1 { color: #22c55e; }
-        h2 { margin-top: 30px; }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--green);
+            letter-spacing: 0.5px;
+        }
 
-        .container { padding: 20px; }
-
-        input, select {
-            padding: 10px;
+        .logo-icon {
+            width: 32px; height: 32px;
+            background: var(--green-dim);
+            border: 1px solid var(--green);
             border-radius: 8px;
-            border: none;
-            margin-right: 10px;
+            display: grid;
+            place-items: center;
+            font-size: 16px;
         }
 
-        button {
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            background: #22c55e;
-            color: black;
-            cursor: pointer;
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--text-dim);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 4px 12px;
         }
 
+        .pulse {
+            width: 7px; height: 7px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--green-dim); }
+            50%       { opacity: .6; box-shadow: 0 0 0 5px transparent; }
+        }
+
+        /* ── LAYOUT ── */
+        .layout {
+            display: grid;
+            grid-template-columns: 260px 1fr 320px;
+            gap: 0;
+            height: calc(100vh - 60px);
+        }
+
+        .panel {
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px 16px;
+        }
+
+        .panel:last-child { border-right: none; }
+
+        .panel-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── CARDS ── */
         .card {
-            background: #020617;
-            padding: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
             margin-bottom: 10px;
+            transition: border-color .2s;
+        }
+
+        .card:hover { border-color: var(--slate); }
+
+        .card.pass   { border-left: 3px solid var(--green); background: linear-gradient(90deg, var(--green-dim) 0%, var(--surface) 60%); }
+        .card.fail   { border-left: 3px solid var(--red);   background: linear-gradient(90deg, var(--red-dim)   0%, var(--surface) 60%); }
+        .card.pending{ border-left: 3px solid var(--slate);  }
+        .card.device { border-left: 3px solid var(--green); }
+
+        .card-title {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .card-sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--mono);
+        }
+
+        /* ── SIM BLOCK ── */
+        .sim-block {
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
             border-radius: 8px;
         }
 
-        .pass { border-left: 4px solid #22c55e; }
-        .fail { border-left: 4px solid #ef4444; }
-        .pending { border-left: 4px solid #64748b; }
+        .sim-id {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
 
-        .otp { color: #facc15; font-weight: bold; }
-        .small { font-size: 12px; color: #64748b; }
-        .device { border-left: 4px solid #22c55e; }
+        .sim-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* ── INPUTS ── */
+        input, select {
+            font-family: var(--mono);
+            font-size: 13px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text);
+            padding: 8px 12px;
+            outline: none;
+            transition: border-color .2s;
+            width: 100%;
+        }
+
+        input:focus, select:focus { border-color: var(--green); }
+
+        input::placeholder { color: var(--text-dim); }
+
+        select option { background: var(--surface2); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            border-radius: 7px;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: opacity .15s, transform .1s;
+            white-space: nowrap;
+        }
+
+        .btn:hover   { opacity: .85; }
+        .btn:active  { transform: scale(.97); }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+
+        .btn-save {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-save:hover { border-color: var(--green); color: var(--green); }
+
+        /* ── TEST FORM ── */
+        .test-form {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        /* ── OTP ── */
+        .otp {
+            color: var(--yellow);
+            font-weight: 700;
+            font-family: var(--mono);
+            background: var(--yellow-dim);
+            border-radius: 4px;
+            padding: 1px 4px;
+        }
+
+        /* ── STATUS BADGES ── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .badge-pass    { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+        .badge-fail    { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red); }
+        .badge-pending { background: var(--surface2);  color: var(--text-dim); border: 1px solid var(--border); }
+
+        /* ── PROGRESS BAR (test timeout) ── */
+        .timeout-bar {
+            margin-top: 8px;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .timeout-fill {
+            height: 100%;
+            background: var(--yellow);
+            border-radius: 2px;
+            transition: width .5s linear;
+        }
+
+        /* ── SMS MESSAGE ── */
+        .sms-message {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text);
+            margin: 6px 0;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--slate); }
+
+        /* ── TOAST ── */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--surface);
+            border: 1px solid var(--green);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--green);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all .3s ease;
+            z-index: 999;
+        }
+
+        #toast.show { transform: translateY(0); opacity: 1; }
     </style>
 </head>
-
 <body>
 
 <header>
-    <h1>📩 SMS Testing Dashboard</h1>
+    <div class="logo">
+        <div class="logo-icon">📩</div>
+        SMS_TESTER
+    </div>
+    <div class="status-pill">
+        <div class="pulse"></div>
+        LIVE
+    </div>
 </header>
 
-<div class="container">
+<div class="layout">
 
-    <!-- 📱 DEVICE ONLINE -->
-    <h2>📱 Device Online</h2>
-    <div id="devices"></div>
+    <!-- ══ PANEL 1: DEVICES ══ -->
+    <div class="panel" id="panel-devices">
+        <div class="panel-title">📱 Devices Online</div>
+        <div id="devices"></div>
+    </div>
 
-    <!-- 📩 SMS -->
-    <h2>📨 SMS</h2>
-    <div id="sms"></div>
+    <!-- ══ PANEL 2: SMS ══ -->
+    <div class="panel" id="panel-sms">
+        <div class="panel-title">📨 SMS Ricevuti</div>
+        <div id="sms"></div>
+    </div>
 
-    <!-- 🧪 TEST -->
-    <h2>🧪 Test SMS</h2>
+    <!-- ══ PANEL 3: TEST ══ -->
+    <div class="panel" id="panel-tests">
+        <div class="panel-title">🧪 Test SMS</div>
 
-    <input id="expected" placeholder="Testo atteso (es: OTP)">
-    <select id="simSelect"></select>
+        <div class="test-form">
+            <div class="form-row">
+                <input id="expected" placeholder="Testo atteso (es: OTP)">
+                <select id="simSelect"></select>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="createTest()">▶ Crea Test</button>
+            </div>
+        </div>
 
-    <button onclick="createTest()">Crea Test</button>
-
-    <div id="tests"></div>
+        <div id="tests"></div>
+    </div>
 
 </div>
+
+<div id="toast"></div>
 
 <script>
 const API = "https://sms-backend-jp2t.onrender.com";
 
-// 🔥 debounce save
-let typingTimeout;
+// ── STATE ──
+let simsCache = [];
+let editingKey = null;
 
-function saveSimLabel(deviceId, simId, label) {
-    clearTimeout(typingTimeout);
-
-    typingTimeout = setTimeout(async () => {
-        await fetch(API + "/set-sim-label", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId, simId, label })
-        });
-
-        console.log("✅ Label salvata:", simId, label);
-    }, 500);
+// ── TOAST ──
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
 }
 
-// OTP highlight
+// ── FETCH HELPER ──
+async function apiFetch(path, options = {}) {
+    try {
+        const res = await fetch(API + path, options);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        console.error(`[apiFetch] ${path}:`, e.message);
+        return null;
+    }
+}
+
+// ── OTP HIGHLIGHT ──
 function highlightOTP(text) {
-    return text.replace(/\b\d{4,6}\b/g, m => `<span class="otp">${m}</span>`);
+    return String(text).replace(/\b\d{4,8}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-//
-// 📱 DEVICE + SIM (NON in loop)
-//
+// ── SIM LABEL ──
+function getSimLabel(deviceId, simId) {
+    const sim = simsCache.find(s => s.deviceId === deviceId && s.simId === simId);
+    if (!sim)                         return simId;
+    if (sim.label?.trim())            return sim.label;
+    if (sim.candidate?.trim())        return "⚠ " + sim.candidate;
+    return "⚠ da configurare";
+}
+
+// ── DEVICES ──
 async function loadDevices() {
-    const res = await fetch(API + "/devices-online");
-    const data = await res.json();
+    const data = await apiFetch("/devices-online");
+    if (!data) return;
 
     const container = document.getElementById("devices");
-    container.innerHTML = "";
+
+    // build new content preserving active input
+    let html = "";
+
+    if (data.length === 0) {
+        html = `<div class="empty">Nessun device online</div>`;
+    }
 
     data.forEach(d => {
-
-        const div = document.createElement("div");
-        div.className = "card device";
-
         let simsHtml = "";
 
-        d.sims.forEach(sim => {
+        (d.sims || []).forEach(sim => {
+            const key = `${d.deviceId}__${sim.simId}`;
+            const isEditing = editingKey === key;
 
-            const key = `${d.deviceId}-${sim.simId}`;
-            const existingInput = document.getElementById(`input-${key}`);
-
-            let value = sim.label || sim.candidate || "";
-
-            // 🔥 se stai editando → NON toccare
-            if (editing && editingKey === key && existingInput) {
-                value = existingInput.value;
-            }
+            const cached = simsCache.find(s => s.deviceId === d.deviceId && s.simId === sim.simId);
+            const value = isEditing
+                ? (document.getElementById(`input-${key}`)?.value ?? (cached?.label || cached?.candidate || ""))
+                : (cached?.label || cached?.candidate || "");
 
             simsHtml += `
-                <div style="margin-top:10px; padding:8px; background:#020617; border-radius:6px;">
-                    <b>${sim.simId}</b><br>
-
-                    <div style="display:flex; gap:6px; margin-top:5px;">
-                        <input 
+                <div class="sim-block">
+                    <div class="sim-id">${sim.simId}</div>
+                    <div class="sim-row">
+                        <input
                             id="input-${key}"
                             placeholder="Numero SIM..."
-                            value="${value}"
-                            onfocus="startEditing('${key}')"
+                            value="${escapeAttr(value)}"
+                            onfocus="editingKey='${key}'"
+                            onblur="editingKey=null"
+                            onkeydown="if(event.key==='Enter') manualSave('${d.deviceId}','${sim.simId}','${key}')"
                         >
-
-                        <button onclick="manualSave('${d.deviceId}', '${sim.simId}', '${key}')">
-                            💾
-                        </button>
+                        <button class="btn btn-save" onclick="manualSave('${d.deviceId}','${sim.simId}','${key}')">💾</button>
                     </div>
                 </div>
             `;
         });
 
-        div.innerHTML = `
-            📱 <b>${d.deviceId}</b><br>
-            <span class="small">${d.model}</span><br>
-            ${simsHtml}
+        if (d.sims.length === 0) {
+            simsHtml = `<div class="card-sub" style="margin-top:8px">Nessuna SIM rilevata</div>`;
+        }
+
+        html += `
+            <div class="card device">
+                <div class="card-title">📱 ${escapeHtml(d.deviceId)}</div>
+                <div class="card-sub">${escapeHtml(d.model || "unknown")}</div>
+                ${simsHtml}
+            </div>
         `;
-
-        container.appendChild(div);
     });
+
+    container.innerHTML = html;
 }
 
-//
-// 📩 SMS (loop ok)
-//
-async function loadSMS() {
-    const res = await fetch(API + "/sms");
-    const data = await res.json();
-
-    const container = document.getElementById("sms");
-    container.innerHTML = "";
-
-    data.slice().reverse().forEach(sms => {
-        const div = document.createElement("div");
-        div.className = "card";
-
-        div.innerHTML = `
-            <b>${sms.sender}</b><br>
-            ${highlightOTP(sms.message)}<br>
-            <span class="small">${new Date(sms.timestamp).toLocaleString()}</span><br>
-            <span class="small">SIM: ${getSimLabel(sms.deviceId, sms.simId)}</span>
-        `;
-
-        container.appendChild(div);
-    });
-}
-
-//
-// 📶 SIM CACHE
-//
-let simsCache = [];
-
-async function loadSimsCache() {
-    const res = await fetch(API + "/sims");
-    simsCache = await res.json();
-}
-
-function getSimLabel(deviceId, simId) {
-    const sim = simsCache.find(
-        s => s.deviceId === deviceId && s.simId === simId
-    );
-
-    if (!sim) return simId;
-
-    // ✅ numero confermato
-    if (sim.label && sim.label.trim() !== "") {
-        return sim.label;
-    }
-
-    // ⚠️ numero inserito ma non verificato
-    if (sim.candidate && sim.candidate.trim() !== "") {
-        return "⚠️ da verificare: " + sim.candidate;
-    }
-
-    // ❌ niente numero
-    return "⚠️ da configurare (" + simId + ")";
-}
-
-
-
-let editing = false;
-let editingKey = null; // 👈 quale input stai modificando
-
-function startEditing(key) {
-    editing = true;
-    editingKey = key;
-}
-
+// ── SAVE SIM LABEL ──
 async function manualSave(deviceId, simId, key) {
-
     const input = document.getElementById(`input-${key}`);
-    const label = input.value;
+    if (!input) return;
 
-    await fetch(API + "/set-sim-label", {
+    const label = input.value.trim();
+
+    const res = await apiFetch("/set-sim-label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deviceId, simId, label })
     });
 
-    console.log("✅ Salvato:", simId, label);
-
-    // 🔥 reset editing
-    editing = false;
-    editingKey = null;
-
-    await loadDevices();
+    if (res) {
+        showToast("✅ Numero salvato");
+        editingKey = null;
+        await loadSimsCache();
+        await loadDevices();
+        await loadSimSelect();
+    }
 }
 
-//
-// 🧪 TEST
-//
-async function createTest() {
+// ── SMS ──
+async function loadSMS() {
+    const data = await apiFetch("/sms");
+    if (!data) return;
 
-    const expected = document.getElementById("expected").value;
+    const container = document.getElementById("sms");
 
-    const selected = JSON.parse(
-        document.getElementById("simSelect").value
-    );
-
-    if (!expected) {
-        alert("Inserisci testo");
+    if (data.length === 0) {
+        container.innerHTML = `<div class="empty">Nessun SMS ricevuto</div>`;
         return;
     }
 
-    await fetch(API + "/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            expected,
-            deviceId: selected.deviceId,
-            simId: selected.simId
-        })
-    });
-
-    document.getElementById("expected").value = "";
+    container.innerHTML = data.slice().reverse().map(sms => `
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)">${escapeHtml(sms.sender)}</span>
+                <span class="card-sub">${formatTime(sms.timestamp)}</span>
+            </div>
+            <div class="sms-message">${highlightOTP(escapeHtml(sms.message))}</div>
+            <div class="card-sub" style="margin-top:4px">SIM: ${escapeHtml(getSimLabel(sms.deviceId, sms.simId))}</div>
+        </div>
+    `).join("");
 }
 
+// ── SIM CACHE ──
+async function loadSimsCache() {
+    const data = await apiFetch("/sims");
+    if (data) simsCache = data;
+}
 
-function renderTests(data) {
+// ── SIM SELECT ──
+async function loadSimSelect() {
+    const select = document.getElementById("simSelect");
+    const currentVal = select.value;
+
+    select.innerHTML = "";
+
+    simsCache.forEach(sim => {
+        const opt = document.createElement("option");
+        opt.value = JSON.stringify({ deviceId: sim.deviceId, simId: sim.simId });
+
+        let label = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
+        if (!sim.label?.trim() && sim.candidate?.trim()) label = "⚠ " + label;
+
+        opt.textContent = `${label}  (${sim.deviceId})`;
+        select.appendChild(opt);
+    });
+
+    // restore selection if still valid
+    if (currentVal) {
+        const found = [...select.options].find(o => o.value === currentVal);
+        if (found) select.value = currentVal;
+    }
+
+    if (select.options.length === 0) {
+        const placeholder = document.createElement("option");
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        placeholder.textContent = "Nessuna SIM disponibile";
+        select.appendChild(placeholder);
+    }
+}
+
+// ── CREATE TEST ──
+async function createTest() {
+    const expected = document.getElementById("expected").value.trim();
+    const simVal = document.getElementById("simSelect").value;
+
+    if (!expected) { showToast("⚠ Inserisci testo atteso"); return; }
+    if (!simVal)   { showToast("⚠ Seleziona una SIM"); return; }
+
+    let selected;
+    try { selected = JSON.parse(simVal); } catch { showToast("⚠ SIM non valida"); return; }
+
+    const res = await apiFetch("/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expected, deviceId: selected.deviceId, simId: selected.simId })
+    });
+
+    if (res) {
+        document.getElementById("expected").value = "";
+        showToast("🧪 Test creato");
+        await loadTests();
+    }
+}
+
+// ── TESTS ──
+async function loadTests() {
+    const data = await apiFetch("/tests");
+    if (!data) return;
+
     const container = document.getElementById("tests");
-    container.innerHTML = "";
 
-    data.slice().reverse().forEach(test => {
+    if (data.length === 0) {
+        container.innerHTML = `<div class="empty">Nessun test ancora</div>`;
+        return;
+    }
 
-        let cls = "pending";
-        let status = "⏳ PENDING";
+    const now = Date.now();
+
+    container.innerHTML = data.slice().reverse().map(test => {
+        let badgeHtml, cls;
 
         if (test.status === "PASS") {
             cls = "pass";
-            status = "✅ PASS";
-        }
-
-        if (test.status === "FAIL") {
+            badgeHtml = `<span class="badge badge-pass">✓ PASS</span>`;
+        } else if (test.status === "FAIL") {
             cls = "fail";
-            status = "❌ FAIL";
+            badgeHtml = `<span class="badge badge-fail">✕ FAIL</span>`;
+        } else {
+            cls = "pending";
+            badgeHtml = `<span class="badge badge-pending">⏳ PENDING</span>`;
         }
 
-        const div = document.createElement("div");
-        div.className = "card " + cls;
+        // timeout progress bar (only for PENDING)
+        let timeoutBar = "";
+        if (test.status === "PENDING" && test.timeout) {
+            const elapsed = now - test.createdAt;
+            const pct = Math.max(0, 100 - (elapsed / test.timeout) * 100);
+            timeoutBar = `
+                <div class="timeout-bar">
+                    <div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div>
+                </div>`;
+        }
 
-        div.innerHTML = `
-            <b>${test.expected}</b><br>
-            ${status}<br>
-            <span class="small">📱 ${test.deviceId} | SIM ${test.simId}</span><br>
-            <span class="small">Creato: ${new Date(test.createdAt).toLocaleTimeString()}</span>
+        return `
+            <div class="card ${cls}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-family:var(--mono);font-size:13px;font-weight:600">${escapeHtml(test.expected)}</span>
+                    ${badgeHtml}
+                </div>
+                <div class="card-sub">📱 ${escapeHtml(test.deviceId)} · SIM ${escapeHtml(test.simId)}</div>
+                <div class="card-sub">Creato: ${formatTime(test.createdAt)}</div>
+                ${test.completedAt ? `<div class="card-sub">Completato: ${formatTime(test.completedAt)}</div>` : ""}
+                ${timeoutBar}
+            </div>
         `;
-
-        container.appendChild(div);
-    });
+    }).join("");
 }
 
-function startEditing(key) {
-    editing = true;
-    editingKey = key;
+// ── UTILS ──
+function formatTime(ts) {
+    return new Date(ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-async function loadTests() {
-    const res = await fetch(API + "/tests");
-    const data = await res.json();
-    renderTests(data);
+function escapeHtml(str) {
+    return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }
 
-//
-// 📶 SELECT SIM
-//
-async function loadSimSelect() {
-    const res = await fetch(API + "/sims");
-    const data = await res.json();
-
-    const select = document.getElementById("simSelect");
-    select.innerHTML = "";
-
-    data.forEach(sim => {
-
-        const opt = document.createElement("option");
-
-        opt.value = JSON.stringify({
-            deviceId: sim.deviceId,
-            simId: sim.simId
-        });
-
-        let label = sim.simId;
-
-        if (sim.label) {
-            label = sim.label;
-        } else if (sim.candidate) {
-            label = "⚠️ " + sim.candidate;
-        }
-
-        opt.innerText = `${label} (${sim.deviceId})`;
-
-        select.appendChild(opt);
-    });
+function escapeAttr(str) {
+    return String(str ?? "")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
-//
-// 🔄 REFRESH (SOLO DATI)
-//
+// ── POLLING ──
 setInterval(async () => {
-
-    if (editing) return; // 🔥 BLOCCO TOTALE
-
     await loadSMS();
     await loadTests();
     await loadSimsCache();
     await loadSimSelect();
-
 }, 2000);
 
-//
-// 🔄 DEVICE REFRESH LENTO
-//
-setInterval(loadDevices, 8000);
-
-//
-// 🚀 INIT
-//
-async function init() {
+// device refresh più lento, salta se si sta editando
+setInterval(async () => {
+    if (editingKey) return;
     await loadDevices();
+}, 8000);
+
+// ── INIT ──
+async function init() {
     await loadSimsCache();
+    await loadDevices();
     await loadSimSelect();
     await loadSMS();
     await loadTests();
 }
 
 init();
-
 </script>
-
 </body>
 </html>
