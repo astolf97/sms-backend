@@ -447,6 +447,26 @@
         #toast.info    { background: var(--surface); border: 1px solid var(--blue);  color: var(--blue); }
 
 
+        /* ── SIM NUMBER CARDS ── */
+        .sim-num-card {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+            user-select: none;
+        }
+        .sim-num-card:hover    { border-color: var(--green); }
+        .sim-num-card.selected { border-color: var(--green); background: var(--green-dim); }
+        .sim-num-flag  { font-size: 18px; line-height: 1; }
+        .sim-num-info  { flex: 1; min-width: 0; }
+        .sim-num-label { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sim-num-sub   { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+        .sim-num-check { font-size: 14px; opacity: 0; transition: opacity .15s; }
+        .sim-num-card.selected .sim-num-check { opacity: 1; }
+
         /* ── COUNTRY FILTER ── */
         .cf-btn {
             font-family: var(--mono); font-size: 11px; font-weight: 600;
@@ -457,6 +477,26 @@
         }
         .cf-btn:hover   { border-color: var(--blue); color: var(--blue); }
         .cf-btn.cf-active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+        /* ── SIM NUMBER CARDS ── */
+        .sim-num-card {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+            user-select: none;
+        }
+        .sim-num-card:hover    { border-color: var(--green); }
+        .sim-num-card.selected { border-color: var(--green); background: var(--green-dim); }
+        .sim-num-flag  { font-size: 18px; line-height: 1; }
+        .sim-num-info  { flex: 1; min-width: 0; }
+        .sim-num-label { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sim-num-sub   { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+        .sim-num-check { font-size: 14px; opacity: 0; transition: opacity .15s; }
+        .sim-num-card.selected .sim-num-check { opacity: 1; }
 
         /* ── COUNTRY FILTER ── */
         .cf-btn {
@@ -572,15 +612,43 @@
         </div>
         <div class="panel">
             <div class="panel-title">🧪 Test SMS</div>
+
             <div class="test-form">
-                <div class="form-col">
-                    <input id="expected" placeholder="Testo atteso (es: OTP)">
-                    <select id="simSelect"></select>
+                <!-- Step 1: testo atteso -->
+                <div class="field-label" style="margin-bottom:6px">① Testo atteso</div>
+                <input id="expected" placeholder="es: OTP, codice, verify..." style="margin-bottom:12px">
+
+                <!-- Step 2: filtro paese -->
+                <div class="field-label" style="margin-bottom:6px">② Filtra per paese</div>
+                <div id="testCountryFilter" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;">
+                    <button class="cf-btn cf-active" data-prefix="" onclick="setTestCountry(this,'')">🌍 Tutti</button>
+                    <button class="cf-btn" data-prefix="+39"  onclick="setTestCountry(this,'+39')">🇮🇹 IT +39</button>
+                    <button class="cf-btn" data-prefix="+44"  onclick="setTestCountry(this,'+44')">🇬🇧 UK +44</button>
+                    <button class="cf-btn" data-prefix="+1"   onclick="setTestCountry(this,'+1')">🇺🇸 US +1</button>
+                    <button class="cf-btn" data-prefix="+49"  onclick="setTestCountry(this,'+49')">🇩🇪 DE +49</button>
+                    <button class="cf-btn" data-prefix="+33"  onclick="setTestCountry(this,'+33')">🇫🇷 FR +33</button>
+                    <button class="cf-btn" data-prefix="+34"  onclick="setTestCountry(this,'+34')">🇪🇸 ES +34</button>
+                    <button class="cf-btn" data-prefix="+31"  onclick="setTestCountry(this,'+31')">🇳🇱 NL +31</button>
+                    <button class="cf-btn" data-prefix="+48"  onclick="setTestCountry(this,'+48')">🇵🇱 PL +48</button>
+                    <button class="cf-btn" data-prefix="+55"  onclick="setTestCountry(this,'+55')">🇧🇷 BR +55</button>
+                    <button class="cf-btn" data-prefix="+91"  onclick="setTestCountry(this,'+91')">🇮🇳 IN +91</button>
+                    <button class="cf-btn" data-prefix="+86"  onclick="setTestCountry(this,'+86')">🇨🇳 CN +86</button>
+                    <button class="cf-btn" data-prefix="+7"   onclick="setTestCountry(this,'+7')">🇷🇺 RU +7</button>
                 </div>
+
+                <!-- Step 3: selezione numero -->
+                <div class="field-label" style="margin-bottom:6px">③ Seleziona numero <span id="simCount" style="color:var(--text-dim);font-weight:400"></span></div>
+                <div id="simNumberList" style="
+                    display:flex; flex-direction:column; gap:6px;
+                    max-height:180px; overflow-y:auto;
+                    margin-bottom:12px;
+                "></div>
+
                 <div class="form-foot">
-                    <button class="btn btn-green" onclick="createTest()">▶ Crea Test</button>
+                    <button class="btn btn-green" style="width:100%" onclick="createTest()">▶ Avvia Test</button>
                 </div>
             </div>
+
             <div id="tests"></div>
         </div>
     </div>
@@ -1128,50 +1196,88 @@ async function loadSMS() {
 // ── SIMS
 async function loadSimsCache() {
     const data = await api("/sims");
-    if (data) S.simsCache = data;
+    if (data) {
+        S.simsCache = data;
+        renderSimNumberList();
+    }
+}
+
+// ── country filter for test panel
+let testCountryPrefix = "";
+let selectedSimKey    = null;   // "deviceId||simId"
+
+function setTestCountry(btn, prefix) {
+    testCountryPrefix = prefix;
+    document.querySelectorAll("#testCountryFilter .cf-btn").forEach(b => b.classList.remove("cf-active"));
+    btn.classList.add("cf-active");
+    renderSimNumberList();
+}
+
+function renderSimNumberList() {
+    const container = document.getElementById("simNumberList");
+    const countEl   = document.getElementById("simCount");
+    if (!container) return;
+
+    // filter sims by country prefix
+    let sims = S.simsCache.filter(sim => {
+        const num = (sim.label || sim.candidate || "").trim();
+        if (!testCountryPrefix) return true;
+        return num.startsWith(testCountryPrefix) || num.startsWith("00" + testCountryPrefix.slice(1));
+    });
+
+    countEl.textContent = sims.length ? `(${sims.length})` : "";
+
+    if (!sims.length) {
+        container.innerHTML = `<div class="empty" style="padding:16px">Nessun numero ${testCountryPrefix || ""} disponibile</div>`;
+        return;
+    }
+
+    container.innerHTML = sims.map(sim => {
+        const key    = sim.deviceId + "||" + sim.simId;
+        const label  = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
+        const flag   = getCountryFlag(label);
+        const isConf = !!sim.label?.trim();
+        const sel    = selectedSimKey === key;
+
+        return `<div class="sim-num-card${sel ? " selected" : ""}"
+                     onclick="selectSim('${key.replace(/'/g,"\'")}')">
+            <div class="sim-num-flag">${flag || "📱"}</div>
+            <div class="sim-num-info">
+                <div class="sim-num-label">${esc(label)}</div>
+                <div class="sim-num-sub">${esc(sim.deviceId)} · ${esc(sim.simId)}${isConf ? "" : " · ⚠ non verificato"}</div>
+            </div>
+            <div class="sim-num-check">✓</div>
+        </div>`;
+    }).join("");
+}
+
+function selectSim(key) {
+    selectedSimKey = key;
+    renderSimNumberList();
 }
 
 async function loadSimSelect() {
-    const sel = document.getElementById("simSelect");
-    const cur = sel.value;
-    sel.innerHTML = "";
-
-    S.simsCache.forEach(sim => {
-        const opt = document.createElement("option");
-        opt.value = JSON.stringify({ deviceId: sim.deviceId, simId: sim.simId });
-        let label = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
-        if (!sim.label?.trim() && sim.candidate?.trim()) label = "⚠ " + label;
-        opt.textContent = `${label}  (${sim.deviceId})`;
-        sel.appendChild(opt);
-    });
-
-    if (cur) { const f = [...sel.options].find(o => o.value === cur); if (f) sel.value = cur; }
-    if (!sel.options.length) {
-        const p = document.createElement("option");
-        p.disabled = p.selected = true; p.textContent = "Nessuna SIM";
-        sel.appendChild(p);
-    }
+    // keep for polling compatibility — just re-render the list
+    renderSimNumberList();
 }
 
 // ── TESTS
 async function createTest() {
     const expected = document.getElementById("expected").value.trim();
-    const simVal   = document.getElementById("simSelect").value;
 
-    if (!expected) { showToast("⚠ Inserisci testo atteso", "error"); return; }
-    if (!simVal)   { showToast("⚠ Seleziona SIM", "error"); return; }
+    if (!expected) { showToast("⚠ Inserisci il testo atteso", "error"); return; }
+    if (!selectedSimKey) { showToast("⚠ Seleziona un numero dal pannello", "error"); return; }
 
-    let sel;
-    try { sel = JSON.parse(simVal); } catch { showToast("⚠ SIM non valida", "error"); return; }
+    const [deviceId, simId] = selectedSimKey.split("||");
 
     const res = await api("/test", {
         method: "POST",
-        body: JSON.stringify({ expected, deviceId: sel.deviceId, simId: sel.simId })
+        body: JSON.stringify({ expected, deviceId, simId })
     });
 
     if (res) {
         document.getElementById("expected").value = "";
-        showToast("🧪 Test creato");
+        showToast("🧪 Test avviato");
         await loadTests();
     }
 }
