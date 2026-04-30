@@ -2,6 +2,7 @@ const express = require("express");
 const cors    = require("cors");
 const path    = require("path");
 const http    = require("http");
+const crypto  = require("crypto");
 const { Server } = require("socket.io");
 
 const app    = express();
@@ -9,18 +10,115 @@ const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: "*" } });
 
 // ────────────────────────────────────────────
+// 🔑 CONFIGURAZIONE AUTH
+//
+//  Imposta la tua API key in una variabile d'ambiente:
+//      export DASHBOARD_API_KEY="la-tua-chiave-segreta"
+//
+//  Se non impostata, viene generata automaticamente ad ogni avvio
+//  e stampata in console — cambiala in produzione!
+// ────────────────────────────────────────────
+const DASHBOARD_API_KEY = process.env.DASHBOARD_API_KEY || (() => {
+    const generated = crypto.randomBytes(24).toString("hex");
+    console.log("⚠️  DASHBOARD_API_KEY non impostata. Chiave generata per questa sessione:");
+    console.log(`    ${generated}`);
+    console.log("    Impostala come variabile d'ambiente per renderla persistente.");
+    return generated;
+})();
+
+// Chiave per le app Android che inviano SMS (può essere uguale o diversa)
+const DEVICE_API_KEY = process.env.DEVICE_API_KEY || DASHBOARD_API_KEY;
+
+// ────────────────────────────────────────────
 // 🗄  STORAGE (in-memory)
 // ────────────────────────────────────────────
-let devicesOnline = {};  // socketId → device
+let devicesOnline = {};
 let smsList       = [];
 let tests         = [];
 let sims          = [];
 
 // ────────────────────────────────────────────
-// 🔌 SOCKET.IO
+// 🛡  MIDDLEWARE DI AUTENTICAZIONE
 // ────────────────────────────────────────────
+
+/**
+ * Confronto timing-safe per prevenire timing attacks
+ */
+function safeCompare(a, b) {
+    try {
+        return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Middleware: protegge gli endpoint della dashboard
+ * Accetta la chiave via header X-API-Key o query ?api_key=
+ */
+function authDashboard(req, res, next) {
+    const key = req.headers["x-api-key"] || req.query.api_key;
+
+    if (!key || !safeCompare(key, DASHBOARD_API_KEY)) {
+        return res.status(401).json({ error: "Non autorizzato" });
+    }
+
+    next();
+}
+
+/**
+ * Middleware: protegge gli endpoint dei device (invio SMS)
+ * Può usare una chiave separata (DEVICE_API_KEY)
+ */
+function authDevice(req, res, next) {
+    const key = req.headers["x-api-key"] || req.query.api_key;
+
+    if (!key || !safeCompare(key, DEVICE_API_KEY)) {
+        return res.status(401).json({ error: "Non autorizzato" });
+    }
+
+    next();
+}
+
+// ────────────────────────────────────────────
+// ⚙️  MIDDLEWARE GLOBALE
+// ────────────────────────────────────────────
+app.use(cors());
+app.use(express.json());
+
+// ────────────────────────────────────────────
+// 🌐 STATIC + ROOT (pubblici — servono la dashboard)
+// ────────────────────────────────────────────
+app.use(express.static(__dirname));
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// ────────────────────────────────────────────
+// 🔐 AUTH: VERIFY (usato dal frontend per validare la chiave)
+// ────────────────────────────────────────────
+app.post("/auth/verify", authDashboard, (req, res) => {
+    res.json({ ok: true });
+});
+
+// ────────────────────────────────────────────
+// 🔌 SOCKET.IO
+//    I device si autenticano inviando la chiave nel handshake
+// ────────────────────────────────────────────
+io.use((socket, next) => {
+    const key = socket.handshake.auth?.apiKey || socket.handshake.query?.api_key;
+
+    if (!key || !safeCompare(key, DEVICE_API_KEY)) {
+        console.warn("🚫 Socket rifiutato — chiave non valida");
+        return next(new Error("Non autorizzato"));
+    }
+
+    next();
+});
+
 io.on("connection", (socket) => {
-    console.log("🔌 Client connesso:", socket.id);
+    console.log("🔌 Device connesso:", socket.id);
 
     socket.on("register_device", (data) => {
         if (!data?.deviceId) return;
@@ -66,7 +164,6 @@ io.on("connection", (socket) => {
                 console.log("🔥 Nuova SIM da register:", sim.simId);
             }
 
-            // Il numero arrivato dall'app diventa "candidate" (da confermare)
             if (incomingSim.number?.trim()) {
                 sim.candidate = incomingSim.number.trim();
                 console.log("🟡 Candidate aggiornato:", sim.simId, sim.candidate);
@@ -74,7 +171,6 @@ io.on("connection", (socket) => {
 
             sim.lastSeen = Date.now();
 
-            // Aggiungi la SIM alla lista sims del device se non presente
             const alreadyInDevice = device.sims.find(s => s.simId === sim.simId);
             if (!alreadyInDevice) {
                 device.sims.push({ simId: sim.simId, label: sim.label });
@@ -88,30 +184,16 @@ io.on("connection", (socket) => {
         const device = devicesOnline[socket.id];
         console.log(device
             ? `❌ Device offline: ${device.deviceId}`
-            : `❌ Client disconnesso: ${socket.id}`
+            : `❌ Socket disconnesso: ${socket.id}`
         );
         delete devicesOnline[socket.id];
     });
 });
 
 // ────────────────────────────────────────────
-// ⚙️  MIDDLEWARE
+// 📩 RICEZIONE SMS  [protetto — device key]
 // ────────────────────────────────────────────
-app.use(cors());
-app.use(express.json());
-app.use(express.static(__dirname));
-
-// ────────────────────────────────────────────
-// 🌐 ROOT
-// ────────────────────────────────────────────
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// ────────────────────────────────────────────
-// 📩 RICEZIONE SMS
-// ────────────────────────────────────────────
-app.post("/sms", (req, res) => {
+app.post("/sms", authDevice, (req, res) => {
     const sms = req.body;
 
     if (!sms?.deviceId || !sms?.simId) {
@@ -138,7 +220,6 @@ app.post("/sms", (req, res) => {
     }
 
     sim.lastSeen = Date.now();
-
     if (sms.sender && !sim.senders.includes(sms.sender)) {
         sim.senders.push(sms.sender);
     }
@@ -147,19 +228,17 @@ app.post("/sms", (req, res) => {
     Object.values(devicesOnline).forEach(d => {
         if (d.deviceId === sms.deviceId && !d.sims.find(s => s.simId === sms.simId)) {
             d.sims.push({ simId: sms.simId, label: null });
-            console.log("📶 SIM aggiunta al device online:", sms.simId);
         }
     });
 
-    // Realtime push
     io.emit("new_sms", sms);
 
     // Controlla test pendenti
     tests.forEach(test => {
         if (
-            test.status === "PENDING" &&
-            sms.deviceId === test.deviceId &&
-            sms.simId    === test.simId   &&
+            test.status   === "PENDING"    &&
+            sms.deviceId  === test.deviceId &&
+            sms.simId     === test.simId    &&
             sms.message?.toLowerCase().includes(test.expected.toLowerCase())
         ) {
             test.status      = "PASS";
@@ -174,16 +253,16 @@ app.post("/sms", (req, res) => {
 });
 
 // ────────────────────────────────────────────
-// 📥 LISTA SMS
+// 📥 LISTA SMS  [protetto — dashboard]
 // ────────────────────────────────────────────
-app.get("/sms", (req, res) => {
+app.get("/sms", authDashboard, (req, res) => {
     res.json(smsList);
 });
 
 // ────────────────────────────────────────────
-// 🧪 CREA TEST
+// 🧪 CREA TEST  [protetto — dashboard]
 // ────────────────────────────────────────────
-app.post("/test", (req, res) => {
+app.post("/test", authDashboard, (req, res) => {
     const { expected, deviceId, simId } = req.body;
 
     if (!expected || !deviceId || !simId) {
@@ -208,16 +287,16 @@ app.post("/test", (req, res) => {
 });
 
 // ────────────────────────────────────────────
-// 📊 LISTA TEST
+// 📊 LISTA TEST  [protetto — dashboard]
 // ────────────────────────────────────────────
-app.get("/tests", (req, res) => {
+app.get("/tests", authDashboard, (req, res) => {
     res.json(tests);
 });
 
 // ────────────────────────────────────────────
-// 🏷  SET SIM LABEL
+// 🏷  SET SIM LABEL  [protetto — dashboard]
 // ────────────────────────────────────────────
-app.post("/set-sim-label", (req, res) => {
+app.post("/set-sim-label", authDashboard, (req, res) => {
     const { deviceId, simId, label } = req.body;
 
     if (!deviceId || !simId) {
@@ -225,33 +304,31 @@ app.post("/set-sim-label", (req, res) => {
     }
 
     const sim = sims.find(s => s.deviceId === deviceId && s.simId === simId);
-    if (!sim) {
-        return res.status(404).json({ error: "SIM non trovata" });
-    }
+    if (!sim) return res.status(404).json({ error: "SIM non trovata" });
 
     sim.label     = label?.trim() || null;
-    sim.candidate = null; // la label confermata sostituisce il candidate
+    sim.candidate = null;
 
     console.log("🏷  Label impostata:", simId, sim.label);
     res.json({ ok: true });
 });
 
 // ────────────────────────────────────────────
-// 📶 LISTA SIM
+// 📶 LISTA SIM  [protetto — dashboard]
 // ────────────────────────────────────────────
-app.get("/sims", (req, res) => {
+app.get("/sims", authDashboard, (req, res) => {
     res.json(sims);
 });
 
 // ────────────────────────────────────────────
-// 📱 DEVICE ONLINE
+// 📱 DEVICE ONLINE  [protetto — dashboard]
 // ────────────────────────────────────────────
-app.get("/devices-online", (req, res) => {
+app.get("/devices-online", authDashboard, (req, res) => {
     res.json(Object.values(devicesOnline));
 });
 
 // ────────────────────────────────────────────
-// ⏱  TIMEOUT TEST (controlla ogni 5 secondi)
+// ⏱  TIMEOUT TEST
 // ────────────────────────────────────────────
 setInterval(() => {
     const now = Date.now();

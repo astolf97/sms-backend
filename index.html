@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMS Testing Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg:        #080c14;
-            --surface:   #0d1424;
-            --surface2:  #111827;
-            --border:    #1e2d45;
-            --green:     #00e676;
-            --green-dim: #00e67622;
-            --red:       #ff3d57;
-            --red-dim:   #ff3d5720;
-            --yellow:    #ffd740;
-            --yellow-dim:#ffd74020;
-            --slate:     #334155;
-            --muted:     #475569;
-            --text:      #e2e8f0;
-            --text-dim:  #64748b;
-            --mono:      'JetBrains Mono', monospace;
-            --sans:      'DM Sans', sans-serif;
+            --bg:         #080c14;
+            --surface:    #0d1424;
+            --surface2:   #111827;
+            --border:     #1e2d45;
+            --green:      #00e676;
+            --green-dim:  #00e67618;
+            --red:        #ff3d57;
+            --red-dim:    #ff3d5720;
+            --yellow:     #ffd740;
+            --yellow-dim: #ffd74020;
+            --blue:       #38bdf8;
+            --blue-dim:   #38bdf815;
+            --slate:      #334155;
+            --muted:      #475569;
+            --text:       #e2e8f0;
+            --text-dim:   #64748b;
+            --mono:       'JetBrains Mono', monospace;
+            --sans:       'DM Sans', sans-serif;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,14 +34,233 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
+            overflow: hidden;
         }
 
-        /* ── HEADER ── */
+        /* ══════════════════════════════════════
+           LOGIN SCREEN
+        ══════════════════════════════════════ */
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            transition: opacity .4s ease, transform .4s ease;
+        }
+
+        #login-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.04);
+        }
+
+        /* subtle grid background */
+        #login-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 48px 48px;
+            opacity: .35;
+        }
+
+        /* green glow orb */
+        #login-screen::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #00e67612 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .login-box {
+            position: relative;
+            z-index: 1;
+            width: 420px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 36px;
+            box-shadow: 0 40px 80px #00000060, 0 0 0 1px #ffffff08;
+            animation: loginIn .5s ease both;
+        }
+
+        @keyframes loginIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .login-logo-icon {
+            width: 44px; height: 44px;
+            background: var(--green-dim);
+            border: 1px solid #00e67640;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+        }
+
+        .login-logo-text {
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--green);
+            letter-spacing: .5px;
+            line-height: 1.2;
+        }
+
+        .login-logo-sub {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .login-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-dim);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .login-input-wrap {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .login-input {
+            width: 100%;
+            font-family: var(--mono);
+            font-size: 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            color: var(--text);
+            padding: 13px 44px 13px 14px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            letter-spacing: 2px;
+        }
+
+        .login-input:focus {
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px var(--green-dim);
+        }
+
+        .toggle-pw {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            transition: color .2s;
+        }
+
+        .toggle-pw:hover { color: var(--text); }
+
+        .login-btn {
+            width: 100%;
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 700;
+            background: var(--green);
+            color: #000;
+            border: none;
+            border-radius: 9px;
+            padding: 14px;
+            cursor: pointer;
+            letter-spacing: .5px;
+            transition: opacity .15s, transform .1s, box-shadow .2s;
+            box-shadow: 0 0 24px #00e67630;
+        }
+
+        .login-btn:hover  { opacity: .9; box-shadow: 0 0 36px #00e67650; }
+        .login-btn:active { transform: scale(.98); }
+
+        .login-error {
+            margin-top: 14px;
+            padding: 10px 14px;
+            background: var(--red-dim);
+            border: 1px solid var(--red);
+            border-radius: 7px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--red);
+            display: none;
+            animation: shake .3s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25%  { transform: translateX(-6px); }
+            75%  { transform: translateX(6px); }
+        }
+
+        .login-error.show { display: block; }
+
+        .login-hint {
+            margin-top: 20px;
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .5px;
+        }
+
+        /* attempts indicator */
+        .login-attempts {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
+        .attempt-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: background .3s;
+        }
+
+        .attempt-dot.used { background: var(--red); }
+
+
+        /* ══════════════════════════════════════
+           DASHBOARD
+        ══════════════════════════════════════ */
+        #dashboard { display: none; }
+        #dashboard.visible { display: block; }
+
         header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 0 28px;
-            height: 60px;
+            padding: 0 24px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -54,26 +275,32 @@
             gap: 10px;
             font-family: var(--mono);
             font-weight: 700;
-            font-size: 15px;
+            font-size: 14px;
             color: var(--green);
-            letter-spacing: 0.5px;
+            letter-spacing: .5px;
         }
 
         .logo-icon {
-            width: 32px; height: 32px;
+            width: 30px; height: 30px;
             background: var(--green-dim);
-            border: 1px solid var(--green);
+            border: 1px solid #00e67640;
             border-radius: 8px;
             display: grid;
             place-items: center;
-            font-size: 16px;
+            font-size: 15px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .status-pill {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 12px;
+            font-size: 11px;
             font-family: var(--mono);
             color: var(--text-dim);
             background: var(--surface2);
@@ -90,22 +317,51 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--green-dim); }
-            50%       { opacity: .6; box-shadow: 0 0 0 5px transparent; }
+            0%, 100% { opacity: 1; }
+            50%       { opacity: .4; }
         }
+
+        /* Session info */
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 12px;
+        }
+
+        .session-info span { color: var(--blue); }
+
+        .logout-btn {
+            font-family: var(--mono);
+            font-size: 11px;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text-dim);
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: border-color .2s, color .2s;
+        }
+
+        .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
         /* ── LAYOUT ── */
         .layout {
             display: grid;
             grid-template-columns: 260px 1fr 320px;
-            gap: 0;
-            height: calc(100vh - 60px);
+            height: calc(100vh - 56px);
         }
 
         .panel {
             border-right: 1px solid var(--border);
             overflow-y: auto;
-            padding: 20px 16px;
+            padding: 18px 14px;
         }
 
         .panel:last-child { border-right: none; }
@@ -117,7 +373,7 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             color: var(--text-dim);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -135,33 +391,20 @@
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 14px;
-            margin-bottom: 10px;
+            padding: 13px;
+            margin-bottom: 9px;
             transition: border-color .2s;
         }
 
         .card:hover { border-color: var(--slate); }
+        .card.pass    { border-left: 3px solid var(--green); background: linear-gradient(90deg, var(--green-dim) 0%, var(--surface) 60%); }
+        .card.fail    { border-left: 3px solid var(--red);   background: linear-gradient(90deg, var(--red-dim)   0%, var(--surface) 60%); }
+        .card.pending { border-left: 3px solid var(--slate); }
+        .card.device  { border-left: 3px solid var(--green); }
 
-        .card.pass   { border-left: 3px solid var(--green); background: linear-gradient(90deg, var(--green-dim) 0%, var(--surface) 60%); }
-        .card.fail   { border-left: 3px solid var(--red);   background: linear-gradient(90deg, var(--red-dim)   0%, var(--surface) 60%); }
-        .card.pending{ border-left: 3px solid var(--slate);  }
-        .card.device { border-left: 3px solid var(--green); }
+        .card-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .card-sub   { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
 
-        .card-title {
-            font-family: var(--mono);
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 4px;
-        }
-
-        .card-sub {
-            font-size: 11px;
-            color: var(--text-dim);
-            font-family: var(--mono);
-        }
-
-        /* ── SIM BLOCK ── */
         .sim-block {
             margin-top: 10px;
             padding: 10px;
@@ -170,17 +413,8 @@
             border-radius: 8px;
         }
 
-        .sim-id {
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text-dim);
-            margin-bottom: 6px;
-        }
-
-        .sim-row {
-            display: flex;
-            gap: 6px;
-        }
+        .sim-id  { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+        .sim-row { display: flex; gap: 6px; }
 
         /* ── INPUTS ── */
         input, select {
@@ -197,9 +431,7 @@
         }
 
         input:focus, select:focus { border-color: var(--green); }
-
         input::placeholder { color: var(--text-dim); }
-
         select option { background: var(--surface2); }
 
         /* ── BUTTONS ── */
@@ -215,20 +447,11 @@
             white-space: nowrap;
         }
 
-        .btn:hover   { opacity: .85; }
-        .btn:active  { transform: scale(.97); }
+        .btn:hover  { opacity: .85; }
+        .btn:active { transform: scale(.97); }
 
-        .btn-primary {
-            background: var(--green);
-            color: #000;
-        }
-
-        .btn-save {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-
+        .btn-primary { background: var(--green); color: #000; }
+        .btn-save    { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
         .btn-save:hover { border-color: var(--green); color: var(--green); }
 
         /* ── TEST FORM ── */
@@ -236,21 +459,12 @@
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 14px;
+            margin-bottom: 14px;
         }
 
-        .form-row {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
+        .form-row     { display: flex; flex-direction: column; gap: 8px; }
+        .form-actions { display: flex; gap: 8px; margin-top: 10px; }
 
         /* ── OTP ── */
         .otp {
@@ -262,7 +476,7 @@
             padding: 1px 4px;
         }
 
-        /* ── STATUS BADGES ── */
+        /* ── BADGE ── */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -280,112 +494,181 @@
         .badge-fail    { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red); }
         .badge-pending { background: var(--surface2);  color: var(--text-dim); border: 1px solid var(--border); }
 
-        /* ── PROGRESS BAR (test timeout) ── */
-        .timeout-bar {
-            margin-top: 8px;
-            height: 3px;
-            background: var(--border);
-            border-radius: 2px;
-            overflow: hidden;
-        }
+        /* ── TIMEOUT BAR ── */
+        .timeout-bar  { margin-top: 8px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .timeout-fill { height: 100%; background: var(--yellow); border-radius: 2px; transition: width .5s linear; }
 
-        .timeout-fill {
-            height: 100%;
-            background: var(--yellow);
-            border-radius: 2px;
-            transition: width .5s linear;
-        }
+        /* ── SMS ── */
+        .sms-message { font-family: var(--mono); font-size: 12px; color: var(--text); margin: 6px 0; line-height: 1.5; word-break: break-all; }
 
-        /* ── SMS MESSAGE ── */
-        .sms-message {
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--text);
-            margin: 6px 0;
-            line-height: 1.5;
-            word-break: break-all;
-        }
-
-        /* ── EMPTY STATE ── */
-        .empty {
-            text-align: center;
-            padding: 32px 16px;
-            color: var(--text-dim);
-            font-family: var(--mono);
-            font-size: 12px;
-        }
+        /* ── EMPTY ── */
+        .empty { text-align: center; padding: 32px 16px; color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
 
         /* ── SCROLLBAR ── */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--slate); }
 
         /* ── TOAST ── */
         #toast {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            background: var(--surface);
-            border: 1px solid var(--green);
             border-radius: 8px;
             padding: 10px 16px;
             font-family: var(--mono);
             font-size: 12px;
-            color: var(--green);
-            transform: translateY(80px);
+            transform: translateY(70px);
             opacity: 0;
             transition: all .3s ease;
-            z-index: 999;
+            z-index: 2000;
+            pointer-events: none;
         }
 
         #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.success { background: var(--surface); border: 1px solid var(--green); color: var(--green); }
+        #toast.error   { background: var(--surface); border: 1px solid var(--red);   color: var(--red); }
+        #toast.info    { background: var(--surface); border: 1px solid var(--blue);  color: var(--blue); }
+
+        /* ── LOCKOUT SCREEN ── */
+        #lockout-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1500;
+            background: #080c14ee;
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            font-family: var(--mono);
+        }
+
+        #lockout-overlay.show { display: flex; }
+
+        .lockout-icon { font-size: 48px; }
+
+        .lockout-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--red);
+        }
+
+        .lockout-timer {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: 2px;
+        }
+
+        .lockout-sub { font-size: 12px; color: var(--text-dim); }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="logo">
-        <div class="logo-icon">📩</div>
-        SMS_TESTER
-    </div>
-    <div class="status-pill">
-        <div class="pulse"></div>
-        LIVE
-    </div>
-</header>
-
-<div class="layout">
-
-    <!-- ══ PANEL 1: DEVICES ══ -->
-    <div class="panel" id="panel-devices">
-        <div class="panel-title">📱 Devices Online</div>
-        <div id="devices"></div>
-    </div>
-
-    <!-- ══ PANEL 2: SMS ══ -->
-    <div class="panel" id="panel-sms">
-        <div class="panel-title">📨 SMS Ricevuti</div>
-        <div id="sms"></div>
-    </div>
-
-    <!-- ══ PANEL 3: TEST ══ -->
-    <div class="panel" id="panel-tests">
-        <div class="panel-title">🧪 Test SMS</div>
-
-        <div class="test-form">
-            <div class="form-row">
-                <input id="expected" placeholder="Testo atteso (es: OTP)">
-                <select id="simSelect"></select>
-            </div>
-            <div class="form-actions">
-                <button class="btn btn-primary" onclick="createTest()">▶ Crea Test</button>
+<!-- ══════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════ -->
+<div id="login-screen">
+    <div class="login-box">
+        <div class="login-logo">
+            <div class="login-logo-icon">📩</div>
+            <div>
+                <div class="login-logo-text">SMS_TESTER</div>
+                <div class="login-logo-sub">Dashboard · Accesso richiesto</div>
             </div>
         </div>
 
-        <div id="tests"></div>
-    </div>
+        <div class="login-label">API Key</div>
+        <div class="login-input-wrap">
+            <input
+                class="login-input"
+                id="apiKeyInput"
+                type="password"
+                placeholder="••••••••••••••••"
+                autocomplete="current-password"
+                onkeydown="if(event.key==='Enter') doLogin()"
+            >
+            <button class="toggle-pw" onclick="togglePw()" id="togglePwBtn" title="Mostra/nascondi">👁</button>
+        </div>
 
+        <button class="login-btn" onclick="doLogin()">ACCEDI →</button>
+
+        <div class="login-error" id="loginError"></div>
+
+        <div class="login-attempts" id="attemptDots">
+            <div class="attempt-dot" id="dot-0"></div>
+            <div class="attempt-dot" id="dot-1"></div>
+            <div class="attempt-dot" id="dot-2"></div>
+        </div>
+
+        <div class="login-hint">Inserisci la API Key configurata nel server</div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════
+     LOCKOUT OVERLAY
+══════════════════════════════ -->
+<div id="lockout-overlay">
+    <div class="lockout-icon">🔒</div>
+    <div class="lockout-title">Troppi tentativi falliti</div>
+    <div class="lockout-timer" id="lockoutTimer">02:00</div>
+    <div class="lockout-sub">Riprova tra qualche istante</div>
+</div>
+
+<!-- ══════════════════════════════
+     DASHBOARD
+══════════════════════════════ -->
+<div id="dashboard">
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">📩</div>
+            SMS_TESTER
+        </div>
+        <div class="header-right">
+            <div class="session-info">
+                🔑 KEY <span id="keyHint"></span>
+            </div>
+            <div class="status-pill">
+                <div class="pulse"></div>
+                LIVE
+            </div>
+            <button class="logout-btn" onclick="doLogout()">⏏ ESCI</button>
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <!-- DEVICES -->
+        <div class="panel">
+            <div class="panel-title">📱 Devices Online</div>
+            <div id="devices"></div>
+        </div>
+
+        <!-- SMS -->
+        <div class="panel">
+            <div class="panel-title">📨 SMS Ricevuti</div>
+            <div id="sms"></div>
+        </div>
+
+        <!-- TESTS -->
+        <div class="panel">
+            <div class="panel-title">🧪 Test SMS</div>
+            <div class="test-form">
+                <div class="form-row">
+                    <input id="expected" placeholder="Testo atteso (es: OTP)">
+                    <select id="simSelect"></select>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="createTest()">▶ Crea Test</button>
+                </div>
+            </div>
+            <div id="tests"></div>
+        </div>
+
+    </div>
 </div>
 
 <div id="toast"></div>
@@ -393,73 +676,297 @@
 <script>
 const API = "https://sms-backend-jp2t.onrender.com";
 
-// ── STATE ──
-let simsCache = [];
-let editingKey = null;
+// ══════════════════════════════════════
+// AUTH STATE
+// ══════════════════════════════════════
+const AUTH = {
+    MAX_ATTEMPTS:  3,
+    LOCKOUT_MS:    2 * 60 * 1000,  // 2 minuti
+    SESSION_KEY:   "sms_dash_token",
+    LOCKOUT_KEY:   "sms_dash_lockout",
+    ATTEMPTS_KEY:  "sms_dash_attempts",
 
-// ── TOAST ──
-function showToast(msg) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2500);
+    attempts: 0,
+    token: null,
+
+    init() {
+        // ripristina tentativi dal sessionStorage (solo per tab corrente)
+        this.attempts = parseInt(sessionStorage.getItem(this.ATTEMPTS_KEY) || "0");
+
+        // check lockout attivo
+        const lockoutUntil = parseInt(localStorage.getItem(this.LOCKOUT_KEY) || "0");
+        if (Date.now() < lockoutUntil) {
+            startLockoutTimer(lockoutUntil - Date.now());
+            return false;
+        }
+
+        // ripristina sessione
+        const saved = sessionStorage.getItem(this.SESSION_KEY);
+        if (saved) {
+            this.token = saved;
+            return true;
+        }
+
+        return false;
+    },
+
+    saveSession(token) {
+        this.token = token;
+        sessionStorage.setItem(this.SESSION_KEY, token);
+        sessionStorage.setItem(this.ATTEMPTS_KEY, "0");
+        this.attempts = 0;
+    },
+
+    failAttempt() {
+        this.attempts++;
+        sessionStorage.setItem(this.ATTEMPTS_KEY, String(this.attempts));
+
+        // aggiorna dot
+        for (let i = 0; i < 3; i++) {
+            const dot = document.getElementById(`dot-${i}`);
+            if (dot) dot.classList.toggle("used", i < this.attempts);
+        }
+
+        if (this.attempts >= this.MAX_ATTEMPTS) {
+            const until = Date.now() + this.LOCKOUT_MS;
+            localStorage.setItem(this.LOCKOUT_KEY, String(until));
+            startLockoutTimer(this.LOCKOUT_MS);
+        }
+    },
+
+    clearSession() {
+        this.token = null;
+        sessionStorage.removeItem(this.SESSION_KEY);
+    },
+
+    getHeaders() {
+        return {
+            "Content-Type": "application/json",
+            "X-API-Key": this.token || ""
+        };
+    }
+};
+
+// ══════════════════════════════════════
+// LOCKOUT TIMER
+// ══════════════════════════════════════
+let lockoutInterval = null;
+
+function startLockoutTimer(ms) {
+    document.getElementById("lockout-overlay").classList.add("show");
+    document.getElementById("login-screen").classList.add("hidden");
+
+    let remaining = Math.ceil(ms / 1000);
+
+    function tick() {
+        const m = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const s = String(remaining % 60).padStart(2, "0");
+        document.getElementById("lockoutTimer").textContent = `${m}:${s}`;
+
+        if (remaining <= 0) {
+            clearInterval(lockoutInterval);
+            document.getElementById("lockout-overlay").classList.remove("show");
+            document.getElementById("login-screen").classList.remove("hidden");
+            AUTH.attempts = 0;
+            sessionStorage.setItem(AUTH.ATTEMPTS_KEY, "0");
+            for (let i = 0; i < 3; i++) {
+                document.getElementById(`dot-${i}`)?.classList.remove("used");
+            }
+            localStorage.removeItem(AUTH.LOCKOUT_KEY);
+        }
+        remaining--;
+    }
+
+    tick();
+    lockoutInterval = setInterval(tick, 1000);
 }
 
-// ── FETCH HELPER ──
+// ══════════════════════════════════════
+// LOGIN / LOGOUT
+// ══════════════════════════════════════
+function togglePw() {
+    const input = document.getElementById("apiKeyInput");
+    const btn   = document.getElementById("togglePwBtn");
+    if (input.type === "password") {
+        input.type = "text";
+        btn.textContent = "🙈";
+    } else {
+        input.type = "password";
+        btn.textContent = "👁";
+    }
+}
+
+async function doLogin() {
+    const key = document.getElementById("apiKeyInput").value.trim();
+    const errEl = document.getElementById("loginError");
+
+    if (!key) {
+        showLoginError("Inserisci la API Key");
+        return;
+    }
+
+    // Verifica la chiave chiamando un endpoint protetto
+    try {
+        const res = await fetch(API + "/auth/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-API-Key": key }
+        });
+
+        if (res.ok) {
+            AUTH.saveSession(key);
+            enterDashboard(key);
+        } else if (res.status === 401) {
+            AUTH.failAttempt();
+
+            const left = AUTH.MAX_ATTEMPTS - AUTH.attempts;
+            if (left > 0) {
+                showLoginError(`API Key errata. Tentativi rimanenti: ${left}`);
+            }
+        } else {
+            showLoginError("Errore server. Riprova.");
+        }
+    } catch (e) {
+        showLoginError("Impossibile contattare il server");
+    }
+}
+
+function showLoginError(msg) {
+    const el = document.getElementById("loginError");
+    el.textContent = msg;
+    el.classList.add("show");
+    el.style.animation = "none";
+    requestAnimationFrame(() => { el.style.animation = ""; });
+    setTimeout(() => el.classList.remove("show"), 4000);
+}
+
+function enterDashboard(key) {
+    // hint chiave: mostra solo ultimi 4 caratteri
+    document.getElementById("keyHint").textContent =
+        "···" + key.slice(-4).toUpperCase();
+
+    document.getElementById("login-screen").classList.add("hidden");
+    document.getElementById("dashboard").classList.add("visible");
+
+    init();
+}
+
+function doLogout() {
+    AUTH.clearSession();
+    stopPolling();
+    document.getElementById("dashboard").classList.remove("visible");
+    document.getElementById("login-screen").classList.remove("hidden");
+    document.getElementById("apiKeyInput").value = "";
+    showToast("Sessione terminata", "info");
+}
+
+// ══════════════════════════════════════
+// FETCH HELPER (con auth header)
+// ══════════════════════════════════════
 async function apiFetch(path, options = {}) {
     try {
-        const res = await fetch(API + path, options);
+        const res = await fetch(API + path, {
+            ...options,
+            headers: {
+                ...AUTH.getHeaders(),
+                ...(options.headers || {})
+            }
+        });
+
+        if (res.status === 401) {
+            showToast("Sessione scaduta — effettua il login", "error");
+            doLogout();
+            return null;
+        }
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
+
     } catch (e) {
         console.error(`[apiFetch] ${path}:`, e.message);
         return null;
     }
 }
 
-// ── OTP HIGHLIGHT ──
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
+let toastTimeout;
+function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => { t.className = ""; }, 2800);
+}
+
+// ══════════════════════════════════════
+// APP STATE
+// ══════════════════════════════════════
+let simsCache  = [];
+let editingKey = null;
+let pollIntervals = [];
+
+function stopPolling() {
+    pollIntervals.forEach(clearInterval);
+    pollIntervals = [];
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function escapeHtml(str) {
+    return String(str ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeAttr(str) {
+    return String(str ?? "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function highlightOTP(text) {
     return String(text).replace(/\b\d{4,8}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-// ── SIM LABEL ──
+function formatTime(ts) {
+    return new Date(ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 function getSimLabel(deviceId, simId) {
     const sim = simsCache.find(s => s.deviceId === deviceId && s.simId === simId);
-    if (!sim)                         return simId;
-    if (sim.label?.trim())            return sim.label;
-    if (sim.candidate?.trim())        return "⚠ " + sim.candidate;
+    if (!sim)                  return simId;
+    if (sim.label?.trim())     return sim.label;
+    if (sim.candidate?.trim()) return "⚠ " + sim.candidate;
     return "⚠ da configurare";
 }
 
-// ── DEVICES ──
+// ══════════════════════════════════════
+// DEVICES
+// ══════════════════════════════════════
 async function loadDevices() {
     const data = await apiFetch("/devices-online");
     if (!data) return;
 
     const container = document.getElementById("devices");
 
-    // build new content preserving active input
-    let html = "";
-
     if (data.length === 0) {
-        html = `<div class="empty">Nessun device online</div>`;
+        container.innerHTML = `<div class="empty">Nessun device online</div>`;
+        return;
     }
 
+    let html = "";
     data.forEach(d => {
         let simsHtml = "";
-
         (d.sims || []).forEach(sim => {
             const key = `${d.deviceId}__${sim.simId}`;
             const isEditing = editingKey === key;
-
             const cached = simsCache.find(s => s.deviceId === d.deviceId && s.simId === sim.simId);
             const value = isEditing
-                ? (document.getElementById(`input-${key}`)?.value ?? (cached?.label || cached?.candidate || ""))
+                ? (document.getElementById(`input-${key}`)?.value ?? "")
                 : (cached?.label || cached?.candidate || "");
 
             simsHtml += `
                 <div class="sim-block">
-                    <div class="sim-id">${sim.simId}</div>
+                    <div class="sim-id">${escapeHtml(sim.simId)}</div>
                     <div class="sim-row">
                         <input
                             id="input-${key}"
@@ -467,41 +974,33 @@ async function loadDevices() {
                             value="${escapeAttr(value)}"
                             onfocus="editingKey='${key}'"
                             onblur="editingKey=null"
-                            onkeydown="if(event.key==='Enter') manualSave('${d.deviceId}','${sim.simId}','${key}')"
+                            onkeydown="if(event.key==='Enter') manualSave('${escapeAttr(d.deviceId)}','${escapeAttr(sim.simId)}','${key}')"
                         >
-                        <button class="btn btn-save" onclick="manualSave('${d.deviceId}','${sim.simId}','${key}')">💾</button>
+                        <button class="btn btn-save" onclick="manualSave('${escapeAttr(d.deviceId)}','${escapeAttr(sim.simId)}','${key}')">💾</button>
                     </div>
-                </div>
-            `;
+                </div>`;
         });
 
-        if (d.sims.length === 0) {
-            simsHtml = `<div class="card-sub" style="margin-top:8px">Nessuna SIM rilevata</div>`;
-        }
+        if (!d.sims?.length) simsHtml = `<div class="card-sub" style="margin-top:8px">Nessuna SIM rilevata</div>`;
 
         html += `
             <div class="card device">
                 <div class="card-title">📱 ${escapeHtml(d.deviceId)}</div>
                 <div class="card-sub">${escapeHtml(d.model || "unknown")}</div>
                 ${simsHtml}
-            </div>
-        `;
+            </div>`;
     });
 
     container.innerHTML = html;
 }
 
-// ── SAVE SIM LABEL ──
 async function manualSave(deviceId, simId, key) {
     const input = document.getElementById(`input-${key}`);
     if (!input) return;
 
-    const label = input.value.trim();
-
     const res = await apiFetch("/set-sim-label", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId, simId, label })
+        body: JSON.stringify({ deviceId, simId, label: input.value.trim() })
     });
 
     if (res) {
@@ -513,7 +1012,9 @@ async function manualSave(deviceId, simId, key) {
     }
 }
 
-// ── SMS ──
+// ══════════════════════════════════════
+// SMS
+// ══════════════════════════════════════
 async function loadSMS() {
     const data = await apiFetch("/sms");
     if (!data) return;
@@ -527,7 +1028,7 @@ async function loadSMS() {
 
     container.innerHTML = data.slice().reverse().map(sms => `
         <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                 <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)">${escapeHtml(sms.sender)}</span>
                 <span class="card-sub">${formatTime(sms.timestamp)}</span>
             </div>
@@ -537,59 +1038,56 @@ async function loadSMS() {
     `).join("");
 }
 
-// ── SIM CACHE ──
+// ══════════════════════════════════════
+// SIMS
+// ══════════════════════════════════════
 async function loadSimsCache() {
     const data = await apiFetch("/sims");
     if (data) simsCache = data;
 }
 
-// ── SIM SELECT ──
 async function loadSimSelect() {
     const select = document.getElementById("simSelect");
     const currentVal = select.value;
-
     select.innerHTML = "";
 
     simsCache.forEach(sim => {
         const opt = document.createElement("option");
         opt.value = JSON.stringify({ deviceId: sim.deviceId, simId: sim.simId });
-
         let label = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
         if (!sim.label?.trim() && sim.candidate?.trim()) label = "⚠ " + label;
-
         opt.textContent = `${label}  (${sim.deviceId})`;
         select.appendChild(opt);
     });
 
-    // restore selection if still valid
     if (currentVal) {
         const found = [...select.options].find(o => o.value === currentVal);
         if (found) select.value = currentVal;
     }
 
-    if (select.options.length === 0) {
+    if (!select.options.length) {
         const placeholder = document.createElement("option");
-        placeholder.disabled = true;
-        placeholder.selected = true;
+        placeholder.disabled = placeholder.selected = true;
         placeholder.textContent = "Nessuna SIM disponibile";
         select.appendChild(placeholder);
     }
 }
 
-// ── CREATE TEST ──
+// ══════════════════════════════════════
+// TESTS
+// ══════════════════════════════════════
 async function createTest() {
     const expected = document.getElementById("expected").value.trim();
-    const simVal = document.getElementById("simSelect").value;
+    const simVal   = document.getElementById("simSelect").value;
 
-    if (!expected) { showToast("⚠ Inserisci testo atteso"); return; }
-    if (!simVal)   { showToast("⚠ Seleziona una SIM"); return; }
+    if (!expected) { showToast("⚠ Inserisci testo atteso", "error"); return; }
+    if (!simVal)   { showToast("⚠ Seleziona una SIM", "error"); return; }
 
     let selected;
-    try { selected = JSON.parse(simVal); } catch { showToast("⚠ SIM non valida"); return; }
+    try { selected = JSON.parse(simVal); } catch { showToast("⚠ SIM non valida", "error"); return; }
 
     const res = await apiFetch("/test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expected, deviceId: selected.deviceId, simId: selected.simId })
     });
 
@@ -600,48 +1098,33 @@ async function createTest() {
     }
 }
 
-// ── TESTS ──
 async function loadTests() {
     const data = await apiFetch("/tests");
     if (!data) return;
 
     const container = document.getElementById("tests");
+    const now = Date.now();
 
     if (data.length === 0) {
         container.innerHTML = `<div class="empty">Nessun test ancora</div>`;
         return;
     }
 
-    const now = Date.now();
-
     container.innerHTML = data.slice().reverse().map(test => {
         let badgeHtml, cls;
+        if      (test.status === "PASS") { cls = "pass";    badgeHtml = `<span class="badge badge-pass">✓ PASS</span>`; }
+        else if (test.status === "FAIL") { cls = "fail";    badgeHtml = `<span class="badge badge-fail">✕ FAIL</span>`; }
+        else                             { cls = "pending"; badgeHtml = `<span class="badge badge-pending">⏳ PENDING</span>`; }
 
-        if (test.status === "PASS") {
-            cls = "pass";
-            badgeHtml = `<span class="badge badge-pass">✓ PASS</span>`;
-        } else if (test.status === "FAIL") {
-            cls = "fail";
-            badgeHtml = `<span class="badge badge-fail">✕ FAIL</span>`;
-        } else {
-            cls = "pending";
-            badgeHtml = `<span class="badge badge-pending">⏳ PENDING</span>`;
-        }
-
-        // timeout progress bar (only for PENDING)
         let timeoutBar = "";
         if (test.status === "PENDING" && test.timeout) {
-            const elapsed = now - test.createdAt;
-            const pct = Math.max(0, 100 - (elapsed / test.timeout) * 100);
-            timeoutBar = `
-                <div class="timeout-bar">
-                    <div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div>
-                </div>`;
+            const pct = Math.max(0, 100 - ((now - test.createdAt) / test.timeout) * 100);
+            timeoutBar = `<div class="timeout-bar"><div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div></div>`;
         }
 
         return `
             <div class="card ${cls}">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                     <span style="font-family:var(--mono);font-size:13px;font-weight:600">${escapeHtml(test.expected)}</span>
                     ${badgeHtml}
                 </div>
@@ -649,53 +1132,47 @@ async function loadTests() {
                 <div class="card-sub">Creato: ${formatTime(test.createdAt)}</div>
                 ${test.completedAt ? `<div class="card-sub">Completato: ${formatTime(test.completedAt)}</div>` : ""}
                 ${timeoutBar}
-            </div>
-        `;
+            </div>`;
     }).join("");
 }
 
-// ── UTILS ──
-function formatTime(ts) {
-    return new Date(ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+// ══════════════════════════════════════
+// POLLING
+// ══════════════════════════════════════
+function startPolling() {
+    pollIntervals.push(
+        setInterval(async () => {
+            await loadSMS();
+            await loadTests();
+            await loadSimsCache();
+            await loadSimSelect();
+        }, 2000)
+    );
+
+    pollIntervals.push(
+        setInterval(async () => {
+            if (editingKey) return;
+            await loadDevices();
+        }, 8000)
+    );
 }
 
-function escapeHtml(str) {
-    return String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(str) {
-    return String(str ?? "")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
-
-// ── POLLING ──
-setInterval(async () => {
-    await loadSMS();
-    await loadTests();
-    await loadSimsCache();
-    await loadSimSelect();
-}, 2000);
-
-// device refresh più lento, salta se si sta editando
-setInterval(async () => {
-    if (editingKey) return;
-    await loadDevices();
-}, 8000);
-
-// ── INIT ──
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
 async function init() {
     await loadSimsCache();
     await loadDevices();
     await loadSimSelect();
     await loadSMS();
     await loadTests();
+    startPolling();
 }
 
-init();
+// ── Avvio: controlla se esiste già una sessione
+if (AUTH.init()) {
+    enterDashboard(AUTH.token);
+}
 </script>
 </body>
 </html>
