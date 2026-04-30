@@ -41,8 +41,11 @@
         /* ══ SCREENS ══ */
         .screen { display: none !important; }
         #screen-login.active     { display: flex !important; }
-        #screen-dashboard.active { display: flex !important; }
-        #screen-admin.active     { display: flex !important; }
+        #screen-dashboard.active  { display: flex !important; }
+        #screen-admin.active      { display: flex !important; }
+        #screen-analytics.active  { display: flex !important; }
+        #screen-map.active        { display: flex !important; }
+        #screen-scheduler.active  { display: flex !important; }
 
         /* ══════════════════════════════════════
            LOGIN
@@ -182,14 +185,14 @@
            DASHBOARD + ADMIN  (layout condiviso)
         ══════════════════════════════════════ */
         #screen-dashboard,
-        #screen-admin {
+        #screen-admin,
+        #screen-analytics,
+        #screen-map,
+        #screen-scheduler {
             height: 100vh;
             display: none;
             flex-direction: column;
         }
-
-        #screen-dashboard.active,
-        #screen-admin.active { display: flex; }
 
         /* ── HEADER ── */
         header {
@@ -509,6 +512,77 @@
         .cf-btn:hover    { border-color: var(--blue); color: var(--blue); }
         .cf-btn.cf-active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
 
+
+        /* ══ ANALYTICS ══ */
+        .analytics-body { flex:1; overflow-y:auto; padding:24px 28px; }
+        .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+        .stat-card {
+            background:var(--surface); border:1px solid var(--border);
+            border-radius:12px; padding:20px 18px;
+        }
+        .stat-value { font-family:var(--mono); font-size:28px; font-weight:700; color:var(--text); line-height:1; }
+        .stat-label { font-family:var(--mono); font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; }
+        .stat-sub   { font-family:var(--mono); font-size:11px; color:var(--text-dim); margin-top:4px; }
+        .stat-card.green { border-left:3px solid var(--green); }
+        .stat-card.blue  { border-left:3px solid var(--blue); }
+        .stat-card.red   { border-left:3px solid var(--red); }
+        .stat-card.yellow{ border-left:3px solid var(--yellow); }
+
+        .charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+        .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; }
+        .chart-title { font-family:var(--mono); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--text-dim); margin-bottom:14px; }
+
+        /* bar chart */
+        .bar-chart { display:flex; align-items:flex-end; gap:3px; height:80px; }
+        .bar-group { display:flex; flex-direction:column; align-items:center; gap:1px; flex:1; }
+        .bar { width:100%; border-radius:2px 2px 0 0; min-height:2px; transition:height .3s; }
+        .bar.pass-bar { background:var(--green); opacity:.8; }
+        .bar.fail-bar { background:var(--red); opacity:.8; }
+        .bar-label { font-family:var(--mono); font-size:8px; color:var(--text-dim); margin-top:3px; }
+
+        /* country table */
+        .ctry-table { width:100%; border-collapse:collapse; }
+        .ctry-table th { font-family:var(--mono); font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim); text-align:left; padding:5px 8px; border-bottom:1px solid var(--border); }
+        .ctry-table td { font-family:var(--mono); font-size:11px; padding:8px 8px; border-bottom:1px solid var(--border); color:var(--text); }
+        .ctry-table tr:last-child td { border-bottom:none; }
+        .ctry-table tr:hover td { background:var(--surface2); }
+
+        /* delivery bar */
+        .dr-bar { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:4px; }
+        .dr-fill { height:100%; border-radius:3px; }
+
+        /* ══ MAP ══ */
+        .map-body { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:20px 24px; gap:16px; }
+        .map-wrap { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative; }
+        .map-legend { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+        .legend-item { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+        .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+        /* ══ SCHEDULER ══ */
+        .scheduler-body { flex:1; overflow-y:auto; padding:24px 28px; }
+        .scheduler-grid { display:grid; grid-template-columns:1fr 360px; gap:20px; max-width:1100px; }
+        .schedule-card {
+            background:var(--surface); border:1px solid var(--border);
+            border-radius:10px; padding:14px 16px; margin-bottom:10px;
+            display:flex; align-items:center; gap:14px;
+        }
+        .schedule-card.disabled { opacity:.5; }
+        .schedule-info { flex:1; min-width:0; }
+        .schedule-name { font-family:var(--mono); font-size:13px; font-weight:600; }
+        .schedule-meta { font-family:var(--mono); font-size:10px; color:var(--text-dim); margin-top:3px; }
+        .schedule-actions { display:flex; gap:6px; }
+
+        /* toggle switch */
+        .toggle { position:relative; width:36px; height:20px; cursor:pointer; }
+        .toggle input { display:none; }
+        .toggle-track { width:100%; height:100%; background:var(--border); border-radius:10px; transition:background .2s; }
+        .toggle input:checked + .toggle-track { background:var(--green); }
+        .toggle-thumb { position:absolute; top:3px; left:3px; width:14px; height:14px; background:#fff; border-radius:50%; transition:transform .2s; }
+        .toggle input:checked ~ .toggle-thumb { transform:translateX(16px); }
+
+        /* countdown badge */
+        .next-run { font-family:var(--mono); font-size:10px; color:var(--yellow); background:var(--yellow-dim); border:1px solid var(--yellow); border-radius:4px; padding:2px 6px; white-space:nowrap; }
+
         /* ── scrollbar ── */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -566,8 +640,11 @@
                 <div class="hdr-logo-icon">📩</div>
                 SMS_TESTER
             </div>
-            <button class="nav-btn active-nav" onclick="showScreen('dashboard')">Dashboard</button>
-            <button class="nav-btn admin-nav" id="adminNavBtn" style="display:none" onclick="showScreen('admin')">⚙ Admin</button>
+            <button class="nav-btn active-nav" id="navDash"      onclick="showScreen('dashboard')">Dashboard</button>
+            <button class="nav-btn"             id="navAnalytics" onclick="showScreen('analytics')">📊 Analytics</button>
+            <button class="nav-btn"             id="navMap"       onclick="showScreen('map')">🗺 Network Map</button>
+            <button class="nav-btn"             id="navScheduler" onclick="showScreen('scheduler')">⏱ Scheduler</button>
+            <button class="nav-btn admin-nav"   id="adminNavBtn"  style="display:none" onclick="showScreen('admin')">⚙ Admin</button>
         </div>
         <div class="hdr-right">
             <div class="session-chip">👤 <b id="hdrUsername"></b></div>
@@ -650,6 +727,151 @@
             </div>
 
             <div id="tests"></div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SCREEN: ANALYTICS
+══════════════════════════════ -->
+<div id="screen-analytics" class="screen">
+    <header>
+        <div class="hdr-left">
+            <div class="hdr-logo"><div class="hdr-logo-icon">📩</div>SMS_TESTER</div>
+            <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
+            <button class="nav-btn active-nav" onclick="showScreen('analytics')">📊 Analytics</button>
+            <button class="nav-btn" onclick="showScreen('map')">🗺 Network Map</button>
+            <button class="nav-btn" onclick="showScreen('scheduler')">⏱ Scheduler</button>
+            <button class="nav-btn admin-nav" id="adminNavBtnA" style="display:none" onclick="showScreen('admin')">⚙ Admin</button>
+        </div>
+        <div class="hdr-right">
+            <div class="session-chip">👤 <b id="hdrUsernameA"></b></div>
+            <button class="logout-btn" onclick="doLogout()">⏏ ESCI</button>
+        </div>
+    </header>
+    <div class="analytics-body">
+        <!-- KPI -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card green"><div class="stat-value" id="kpiDelivery">—</div><div class="stat-label">Delivery Rate</div><div class="stat-sub">ultime 24h</div></div>
+            <div class="stat-card blue"><div class="stat-value" id="kpiLatency">—</div><div class="stat-label">Latenza Media</div><div class="stat-sub">test PASS</div></div>
+            <div class="stat-card yellow"><div class="stat-value" id="kpiTotal">—</div><div class="stat-label">Test Totali</div><div class="stat-sub">ultime 24h</div></div>
+            <div class="stat-card red"><div class="stat-value" id="kpiFail">—</div><div class="stat-label">Falliti</div><div class="stat-sub">ultime 24h</div></div>
+        </div>
+        <!-- CHARTS ROW -->
+        <div class="charts-row">
+            <div class="chart-card">
+                <div class="chart-title">Pass / Fail — ultime 24h</div>
+                <div class="bar-chart" id="hourlyChart"></div>
+                <div style="display:flex;gap:12px;margin-top:8px">
+                    <span style="font-family:var(--mono);font-size:10px;color:var(--green)">■ PASS</span>
+                    <span style="font-family:var(--mono);font-size:10px;color:var(--red)">■ FAIL</span>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Performance per Paese — 7 giorni</div>
+                <div style="overflow-y:auto;max-height:140px">
+                    <table class="ctry-table" id="countryTable">
+                        <thead><tr><th>Paese</th><th>Pass</th><th>Fail</th><th>DR%</th><th>Latenza</th></tr></thead>
+                        <tbody id="countryTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCREEN: NETWORK MAP
+══════════════════════════════ -->
+<div id="screen-map" class="screen">
+    <header>
+        <div class="hdr-left">
+            <div class="hdr-logo"><div class="hdr-logo-icon">📩</div>SMS_TESTER</div>
+            <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
+            <button class="nav-btn" onclick="showScreen('analytics')">📊 Analytics</button>
+            <button class="nav-btn active-nav" onclick="showScreen('map')">🗺 Network Map</button>
+            <button class="nav-btn" onclick="showScreen('scheduler')">⏱ Scheduler</button>
+            <button class="nav-btn admin-nav" id="adminNavBtnM" style="display:none" onclick="showScreen('admin')">⚙ Admin</button>
+        </div>
+        <div class="hdr-right">
+            <div class="session-chip">👤 <b id="hdrUsernameM"></b></div>
+            <button class="logout-btn" onclick="doLogout()">⏏ ESCI</button>
+        </div>
+    </header>
+    <div class="map-body">
+        <div class="map-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>SIM attiva + test OK</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>SIM attiva, nessun test</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Solo fallimenti</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--border)"></div>Nessuna copertura</div>
+        </div>
+        <div class="map-wrap" id="networkMapWrap">
+            <svg id="networkMapSVG" viewBox="0 0 1000 500" style="width:100%;height:100%" preserveAspectRatio="xMidYMid meet"></svg>
+            <div id="mapTooltip" style="display:none;position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;pointer-events:none;z-index:10;min-width:150px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCREEN: SCHEDULER
+══════════════════════════════ -->
+<div id="screen-scheduler" class="screen">
+    <header>
+        <div class="hdr-left">
+            <div class="hdr-logo"><div class="hdr-logo-icon">📩</div>SMS_TESTER</div>
+            <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
+            <button class="nav-btn" onclick="showScreen('analytics')">📊 Analytics</button>
+            <button class="nav-btn" onclick="showScreen('map')">🗺 Network Map</button>
+            <button class="nav-btn active-nav" onclick="showScreen('scheduler')">⏱ Scheduler</button>
+            <button class="nav-btn admin-nav" id="adminNavBtnS" style="display:none" onclick="showScreen('admin')">⚙ Admin</button>
+        </div>
+        <div class="hdr-right">
+            <div class="session-chip">👤 <b id="hdrUsernameS"></b></div>
+            <button class="logout-btn" onclick="doLogout()">⏏ ESCI</button>
+        </div>
+    </header>
+    <div class="scheduler-body">
+        <div class="scheduler-grid">
+            <!-- SCHEDULE LIST -->
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                    <div class="panel-title" style="margin:0">⏱ Test Ricorrenti</div>
+                </div>
+                <div id="scheduleList"></div>
+            </div>
+            <!-- CREATE FORM -->
+            <div>
+                <div class="admin-section">
+                    <div class="admin-section-title">+ Nuovo Schedule</div>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                        <div>
+                            <div class="field-label">Nome</div>
+                            <input class="field-input" id="schName" placeholder="es: UK daily check">
+                        </div>
+                        <div>
+                            <div class="field-label">Testo atteso</div>
+                            <input class="field-input" id="schExpected" placeholder="es: OTP">
+                        </div>
+                        <div>
+                            <div class="field-label">Paese / SIM</div>
+                            <div id="schSimList" style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;"></div>
+                        </div>
+                        <div>
+                            <div class="field-label">Intervallo (minuti)</div>
+                            <select class="field-input" id="schInterval">
+                                <option value="5">ogni 5 min</option>
+                                <option value="15">ogni 15 min</option>
+                                <option value="30" selected>ogni 30 min</option>
+                                <option value="60">ogni ora</option>
+                                <option value="360">ogni 6 ore</option>
+                                <option value="1440">ogni 24 ore</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-green" style="width:100%" onclick="createSchedule()">+ Crea Schedule</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1000,9 +1222,13 @@ function enterApp() {
     roleEl.className   = `role-chip ${S.user.role}`;
 
     if (S.user.role === "admin") {
-        document.getElementById("adminNavBtn").style.display = "";
+        ["adminNavBtn","adminNavBtnA","adminNavBtnM","adminNavBtnS"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "";
+        });
     }
 
+    updateAllHeaders();
     showScreen("dashboard");
     initDashboard();
 }
@@ -1198,6 +1424,7 @@ async function loadSimsCache() {
     if (data) {
         S.simsCache = data;
         renderSimNumberList();
+        renderSchSimList();
     }
 }
 
@@ -1475,6 +1702,330 @@ async function changePassword() {
         showToast("✅ Password aggiornata — effettua nuovamente il login");
         setTimeout(doLogout, 2000);
     }
+}
+
+
+// ══════════════════════════════════════
+// SHOW SCREEN — extended
+// ══════════════════════════════════════
+const ALL_SCREENS = ["login","dashboard","admin","analytics","map","scheduler"];
+
+async function showScreen(name) {
+    ALL_SCREENS.forEach(id => {
+        const el = document.getElementById(`screen-${id}`);
+        if (el) el.classList.remove("active");
+    });
+    const target = document.getElementById(`screen-${name}`);
+    if (target) target.classList.add("active");
+
+    // update all nav button states
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active-nav"));
+
+    if (name === "analytics") { await loadAnalytics(); }
+    if (name === "map")       { await loadNetworkMap(); }
+    if (name === "scheduler") { await loadScheduler(); renderSchSimList(); }
+    if (name === "admin")     { await loadUsers(); }
+}
+
+// ══════════════════════════════════════
+// ENTER APP — set usernames on all screens
+// ══════════════════════════════════════
+function updateAllHeaders() {
+    ["hdrUsernameA","hdrUsernameM","hdrUsernameS"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = S.user.username;
+    });
+    if (S.user.role === "admin") {
+        ["adminNavBtnA","adminNavBtnM","adminNavBtnS"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "";
+        });
+    }
+}
+
+// ══════════════════════════════════════
+// ANALYTICS
+// ══════════════════════════════════════
+async function loadAnalytics() {
+    const data = await api("/stats");
+    if (!data) return;
+
+    const { summary, byCountry, hourly } = data;
+
+    // KPIs
+    document.getElementById("kpiDelivery").textContent = summary.deliveryRate !== null ? summary.deliveryRate + "%" : "N/A";
+    document.getElementById("kpiLatency").textContent  = summary.avgLatency   !== null ? (summary.avgLatency/1000).toFixed(1) + "s" : "N/A";
+    document.getElementById("kpiTotal").textContent    = summary.total24;
+    document.getElementById("kpiFail").textContent     = summary.fail24;
+
+    // color delivery rate
+    const drEl = document.getElementById("kpiDelivery");
+    if      (summary.deliveryRate >= 90) drEl.style.color = "var(--green)";
+    else if (summary.deliveryRate >= 70) drEl.style.color = "var(--yellow)";
+    else if (summary.deliveryRate !== null) drEl.style.color = "var(--red)";
+
+    // Hourly bar chart
+    const chartEl = document.getElementById("hourlyChart");
+    const maxVal  = Math.max(1, ...hourly.map(h => h.pass + h.fail));
+
+    chartEl.innerHTML = hourly.map(h => {
+        const total  = h.pass + h.fail;
+        const passH  = Math.round((h.pass / maxVal) * 76);
+        const failH  = Math.round((h.fail / maxVal) * 76);
+        return `<div class="bar-group" title="${h.hour}:00 — PASS:${h.pass} FAIL:${h.fail}">
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;height:76px;gap:1px">
+                ${h.fail ? `<div class="bar fail-bar" style="height:${failH}px"></div>` : ""}
+                ${h.pass ? `<div class="bar pass-bar" style="height:${passH}px"></div>` : ""}
+                ${!total  ? `<div style="height:2px;background:var(--border);border-radius:2px"></div>` : ""}
+            </div>
+            <div class="bar-label">${String(h.hour).padStart(2,"0")}</div>
+        </div>`;
+    }).join("");
+
+    // Country table
+    const tbody = document.getElementById("countryTableBody");
+    const flags = {IT:"🇮🇹",UK:"🇬🇧",US:"🇺🇸",DE:"🇩🇪",FR:"🇫🇷",ES:"🇪🇸",NL:"🇳🇱",PL:"🇵🇱",BR:"🇧🇷",IN:"🇮🇳",CN:"🇨🇳",RU:"🇷🇺"};
+
+    tbody.innerHTML = byCountry.length
+        ? byCountry.sort((a,b) => b.total - a.total).map(c => {
+            const dr    = c.deliveryRate;
+            const color = dr >= 90 ? "var(--green)" : dr >= 70 ? "var(--yellow)" : "var(--red)";
+            const lat   = c.avgLatency ? (c.avgLatency/1000).toFixed(1)+"s" : "—";
+            return `<tr>
+                <td>${flags[c.country] || "🌍"} ${c.country}</td>
+                <td style="color:var(--green)">${c.pass}</td>
+                <td style="color:var(--red)">${c.fail}</td>
+                <td>
+                    <div style="color:${color};font-weight:600">${dr !== null ? dr+"%" : "—"}</div>
+                    <div class="dr-bar"><div class="dr-fill" style="width:${dr||0}%;background:${color}"></div></div>
+                </td>
+                <td style="color:var(--text-dim)">${lat}</td>
+            </tr>`;
+        }).join("")
+        : `<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:20px">Nessun dato disponibile</td></tr>`;
+}
+
+// ══════════════════════════════════════
+// NETWORK MAP
+// ══════════════════════════════════════
+const COUNTRY_COORDS = {
+    IT:{x:510,y:200,label:"IT"},  UK:{x:460,y:155,label:"UK"},
+    US:{x:200,y:200,label:"US"},  DE:{x:510,y:165,label:"DE"},
+    FR:{x:475,y:185,label:"FR"},  ES:{x:455,y:205,label:"ES"},
+    NL:{x:490,y:155,label:"NL"},  PL:{x:525,y:158,label:"PL"},
+    BR:{x:295,y:320,label:"BR"},  IN:{x:640,y:240,label:"IN"},
+    CN:{x:710,y:210,label:"CN"},  RU:{x:620,y:140,label:"RU"},
+};
+
+async function loadNetworkMap() {
+    const [statsData, simsData] = await Promise.all([api("/stats"), api("/sims")]);
+    if (!statsData || !simsData) return;
+
+    const prefixMap = {
+        "+39":"IT","+44":"UK","+1":"US","+49":"DE","+33":"FR",
+        "+34":"ES","+31":"NL","+48":"PL","+55":"BR","+91":"IN","+86":"CN","+7":"RU"
+    };
+
+    // build country → {hasSim, pass, fail} map
+    const countryData = {};
+    simsData.forEach(sim => {
+        const num = sim.label || sim.candidate || "";
+        for (const [prefix, code] of Object.entries(prefixMap)) {
+            const bare = prefix.slice(1);
+            if (num.startsWith(prefix) || num.startsWith(bare) || num.startsWith("00"+bare)) {
+                if (!countryData[code]) countryData[code] = { hasSim:true, pass:0, fail:0 };
+                countryData[code].hasSim = true;
+                break;
+            }
+        }
+    });
+
+    statsData.byCountry.forEach(c => {
+        if (!countryData[c.country]) countryData[c.country] = { hasSim:false, pass:0, fail:0 };
+        countryData[c.country].pass = c.pass;
+        countryData[c.country].fail = c.fail;
+    });
+
+    const svg = document.getElementById("networkMapSVG");
+    const tooltip = document.getElementById("mapTooltip");
+
+    // simple world background rectangles by region
+    svg.innerHTML = `
+        <!-- ocean bg -->
+        <rect width="1000" height="500" fill="#0d1424"/>
+        <!-- rough landmasses -->
+        <ellipse cx="500" cy="220" rx="200" ry="90" fill="#1e2d45" opacity=".5"/>
+        <ellipse cx="220" cy="220" rx="160" ry="80" fill="#1e2d45" opacity=".5"/>
+        <ellipse cx="300" cy="320" rx="60" ry="70" fill="#1e2d45" opacity=".5"/>
+        <ellipse cx="680" cy="230" rx="130" ry="75" fill="#1e2d45" opacity=".5"/>
+        <ellipse cx="830" cy="340" rx="90" ry="60" fill="#1e2d45" opacity=".4"/>
+    `;
+
+    Object.entries(COUNTRY_COORDS).forEach(([code, pos]) => {
+        const d = countryData[code];
+        let color  = "#1e2d45";
+        let radius = 12;
+        let label  = "";
+
+        if (d) {
+            const total = d.pass + d.fail;
+            if (total === 0 && d.hasSim)         { color = "#ffd740"; radius = 14; }
+            else if (d.pass > 0 && d.fail === 0) { color = "#00e676"; radius = 16; }
+            else if (d.pass > 0)                 { color = "#00e676"; radius = 16; label = d.fail > 0 ? "⚠" : ""; }
+            else if (d.fail > 0)                 { color = "#ff3d57"; radius = 14; }
+            else if (d.hasSim)                   { color = "#ffd740"; radius = 14; }
+        }
+
+        const dr = d && (d.pass+d.fail) > 0 ? Math.round(d.pass/(d.pass+d.fail)*100) : null;
+
+        const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+        g.setAttribute("style","cursor:pointer");
+
+        // glow
+        const glow = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        glow.setAttribute("cx",pos.x); glow.setAttribute("cy",pos.y);
+        glow.setAttribute("r",radius+6); glow.setAttribute("fill",color); glow.setAttribute("opacity","0.15");
+        g.appendChild(glow);
+
+        // dot
+        const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        dot.setAttribute("cx",pos.x); dot.setAttribute("cy",pos.y);
+        dot.setAttribute("r",radius); dot.setAttribute("fill",color); dot.setAttribute("opacity","0.9");
+        g.appendChild(dot);
+
+        // label
+        const txt = document.createElementNS("http://www.w3.org/2000/svg","text");
+        txt.setAttribute("x",pos.x); txt.setAttribute("y",pos.y+4);
+        txt.setAttribute("text-anchor","middle");
+        txt.setAttribute("font-family","JetBrains Mono,monospace");
+        txt.setAttribute("font-size","9"); txt.setAttribute("font-weight","700");
+        txt.setAttribute("fill", color === "#ffd740" || color === "#1e2d45" ? "#080c14" : "#080c14");
+        txt.textContent = pos.label;
+        g.appendChild(txt);
+
+        // tooltip
+        g.addEventListener("mouseenter", (e) => {
+            const dr_str = dr !== null ? dr+"%" : (d?.hasSim ? "—" : "n/a");
+            tooltip.innerHTML = `<b style="color:${color}">${pos.label}</b><br>
+                Pass: <span style="color:var(--green)">${d?.pass||0}</span> &nbsp;
+                Fail: <span style="color:var(--red)">${d?.fail||0}</span><br>
+                DR: <b>${dr_str}</b>`;
+            tooltip.style.display = "block";
+        });
+        g.addEventListener("mousemove", (e) => {
+            const rect = document.getElementById("networkMapWrap").getBoundingClientRect();
+            tooltip.style.left = (e.clientX - rect.left + 12) + "px";
+            tooltip.style.top  = (e.clientY - rect.top  - 10) + "px";
+        });
+        g.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+
+        svg.appendChild(g);
+    });
+}
+
+// ══════════════════════════════════════
+// SCHEDULER
+// ══════════════════════════════════════
+let selectedSchSim = null;
+
+function renderSchSimList() {
+    const container = document.getElementById("schSimList");
+    if (!container) return;
+
+    container.innerHTML = S.simsCache.map(sim => {
+        const label = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
+        const flag  = getCountryFlag(label);
+        const key   = sim.deviceId + "||" + sim.simId;
+        const sel   = selectedSchSim === key;
+        return `<div class="sim-num-card${sel?" selected":""}" onclick="selectedSchSim='${key.replace(/'/g,"\'")}';renderSchSimList()">
+            <div class="sim-num-flag">${flag||"📱"}</div>
+            <div class="sim-num-info">
+                <div class="sim-num-label">${esc(label)}</div>
+                <div class="sim-num-sub">${esc(sim.deviceId)}</div>
+            </div>
+            <div class="sim-num-check">✓</div>
+        </div>`;
+    }).join("") || `<div class="empty">Nessuna SIM disponibile</div>`;
+}
+
+async function createSchedule() {
+    const name     = document.getElementById("schName").value.trim();
+    const expected = document.getElementById("schExpected").value.trim();
+    const interval = document.getElementById("schInterval").value;
+
+    if (!name || !expected)    { showToast("⚠ Nome e testo obbligatori", "error"); return; }
+    if (!selectedSchSim)       { showToast("⚠ Seleziona una SIM", "error"); return; }
+
+    const [deviceId, simId] = selectedSchSim.split("||");
+
+    const res = await api("/schedules", {
+        method: "POST",
+        body: JSON.stringify({ name, expected, deviceId, simId, intervalMinutes: parseInt(interval) })
+    });
+
+    if (res) {
+        showToast(`✅ Schedule "${name}" creato`);
+        document.getElementById("schName").value = "";
+        document.getElementById("schExpected").value = "";
+        selectedSchSim = null;
+        renderSchSimList();
+        await loadScheduler();
+    }
+}
+
+async function loadScheduler() {
+    const data = await api("/schedules");
+    if (!data) return;
+
+    const container = document.getElementById("scheduleList");
+    const flags = {IT:"🇮🇹",UK:"🇬🇧",US:"🇺🇸",DE:"🇩🇪",FR:"🇫🇷",ES:"🇪🇸",NL:"🇳🇱",PL:"🇵🇱",BR:"🇧🇷",IN:"🇮🇳",CN:"🇨🇳",RU:"🇷🇺"};
+
+    if (!data.length) {
+        container.innerHTML = `<div class="empty">Nessun schedule ancora. Creane uno →</div>`;
+        return;
+    }
+
+    container.innerHTML = data.map(s => {
+        const sim   = S.simsCache.find(sm => sm.deviceId === s.deviceId && sm.simId === s.simId);
+        const label = sim?.label || sim?.candidate || s.simId;
+        const flag  = getCountryFlag(label);
+        const nextMs = s.nextRun ? Math.max(0, s.nextRun - Date.now()) : null;
+        const nextStr = nextMs !== null
+            ? (nextMs < 60000 ? `${Math.round(nextMs/1000)}s` : `${Math.round(nextMs/60000)}m`)
+            : "—";
+
+        return `<div class="schedule-card${s.enabled?"":" disabled"}">
+            <div style="font-size:22px">${flag||"📱"}</div>
+            <div class="schedule-info">
+                <div class="schedule-name">${esc(s.name)}</div>
+                <div class="schedule-meta">
+                    "${esc(s.expected)}" · ${esc(label)} · ogni ${s.intervalMinutes}m
+                </div>
+                ${s.enabled && nextMs !== null ? `<span class="next-run">prossimo: ${nextStr}</span>` : ""}
+            </div>
+            <div class="schedule-actions">
+                <label class="toggle" title="${s.enabled?"Disabilita":"Abilita"}">
+                    <input type="checkbox" ${s.enabled?"checked":""} onchange="toggleSchedule('${s.id}',this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <button class="btn btn-red" style="font-size:11px;padding:5px 9px" onclick="deleteSchedule('${s.id}')">🗑</button>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+async function toggleSchedule(id, enabled) {
+    await api(`/schedules/${id}`, { method:"PATCH", body: JSON.stringify({ enabled }) });
+    showToast(enabled ? "▶ Schedule attivato" : "⏸ Schedule sospeso");
+    await loadScheduler();
+}
+
+async function deleteSchedule(id) {
+    if (!confirm("Eliminare questo schedule?")) return;
+    await api(`/schedules/${id}`, { method:"DELETE" });
+    showToast("🗑 Schedule eliminato");
+    await loadScheduler();
 }
 
 // ══════════════════════════════════════

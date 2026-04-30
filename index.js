@@ -3,7 +3,7 @@ const cors     = require("cors");
 const path     = require("path");
 const http     = require("http");
 const crypto   = require("crypto");
-const bcrypt   = require("bcryptjs");
+const bcrypt   = require("bcrypt");
 const jwt      = require("jsonwebtoken");
 const { Server } = require("socket.io");
 
@@ -341,6 +341,137 @@ app.get("/sms",            requireAuth, (req, res) => res.json(smsList));
 app.get("/sims",           requireAuth, (req, res) => res.json(sims));
 app.get("/devices-online", requireAuth, (req, res) => res.json(Object.values(devicesOnline)));
 app.get("/tests",          requireAuth, (req, res) => res.json(tests));
+
+// ────────────────────────────────────────────
+// 📊 STATS
+// ────────────────────────────────────────────
+app.get("/stats", requireAuth, (req, res) => {
+    const now = Date.now();
+    const w24  = now - 24 * 3600000;
+    const w7d  = now - 7  * 24 * 3600000;
+
+    const recent = tests.filter(t => t.createdAt > w24);
+    const pass24 = recent.filter(t => t.status === "PASS").length;
+    const fail24 = recent.filter(t => t.status === "FAIL").length;
+    const total24 = recent.length;
+    const deliveryRate = total24 > 0 ? Math.round(pass24 / total24 * 100) : null;
+
+    const passWithTime = recent.filter(t => t.status === "PASS" && t.completedAt);
+    const avgLatency = passWithTime.length > 0
+        ? Math.round(passWithTime.reduce((a, t) => a + (t.completedAt - t.createdAt), 0) / passWithTime.length)
+        : null;
+
+    const prefixMap = {
+        "+39":"IT","+44":"UK","+1":"US","+49":"DE","+33":"FR",
+        "+34":"ES","+31":"NL","+48":"PL","+55":"BR","+91":"IN","+86":"CN","+7":"RU"
+    };
+
+    const countryStats = {};
+    tests.filter(t => t.createdAt > w7d).forEach(test => {
+        const sim = sims.find(s => s.deviceId === test.deviceId && s.simId === test.simId);
+        const num = sim?.label || sim?.candidate || "";
+        let country = "OTHER";
+        for (const [prefix, code] of Object.entries(prefixMap)) {
+            const bare = prefix.slice(1);
+            if (num.startsWith(prefix) || num.startsWith(bare) || num.startsWith("00"+bare)) { country = code; break; }
+        }
+        if (!countryStats[country]) countryStats[country] = { pass:0, fail:0, latencies:[] };
+        if (test.status === "PASS") { countryStats[country].pass++; if (test.completedAt) countryStats[country].latencies.push(test.completedAt - test.createdAt); }
+        if (test.status === "FAIL") countryStats[country].fail++;
+    });
+
+    const byCountry = Object.entries(countryStats).map(([country, d]) => ({
+        country, pass: d.pass, fail: d.fail, total: d.pass + d.fail,
+        deliveryRate: d.pass + d.fail > 0 ? Math.round(d.pass / (d.pass + d.fail) * 100) : null,
+        avgLatency:   d.latencies.length > 0 ? Math.round(d.latencies.reduce((a,b)=>a+b,0)/d.latencies.length) : null
+    }));
+
+    const hourly = Array.from({length: 24}, (_, i) => {
+        const from = now - (24 - i) * 3600000;
+        const to   = from + 3600000;
+        const b = tests.filter(t => t.createdAt >= from && t.createdAt < to);
+        return { hour: new Date(from).getHours(), pass: b.filter(t=>t.status==="PASS").length, fail: b.filter(t=>t.status==="FAIL").length };
+    });
+
+    res.json({
+        summary: { total24, pass24, fail24, deliveryRate, avgLatency, totalSims: sims.length, onlineDevices: Object.keys(devicesOnline).length },
+        byCountry, hourly
+    });
+});
+
+// ────────────────────────────────────────────
+// 🗓  SCHEDULES
+// ────────────────────────────────────────────
+let schedules    = [];
+let scheduleJobs = {};
+
+function startScheduleJob(schedule) {
+    if (scheduleJobs[schedule.id]) clearInterval(scheduleJobs[schedule.id]);
+    if (!schedule.enabled) return;
+
+    const run = () => {
+        if (!schedule.enabled) return;
+        schedule.lastRun = Date.now();
+        schedule.nextRun = Date.now() + schedule.intervalMs;
+        const test = {
+            id: Date.now(), expected: schedule.expected,
+            deviceId: schedule.deviceId, simId: schedule.simId,
+            status: "PENDING", createdAt: Date.now(), completedAt: null,
+            result: null, timeout: 60000,
+            createdBy: `⏱ ${schedule.name}`
+        };
+        tests.push(test);
+        io.emit("new_test", test);
+        console.log(`🗓 Schedule run: ${schedule.name}`);
+    };
+
+    scheduleJobs[schedule.id] = setInterval(run, schedule.intervalMs);
+    schedule.nextRun = Date.now() + schedule.intervalMs;
+}
+
+app.get("/schedules",     requireAuth,  (req, res) => res.json(schedules));
+
+app.post("/schedules", requireAdmin, (req, res) => {
+    const { name, expected, deviceId, simId, intervalMinutes } = req.body;
+    if (!name || !expected || !deviceId || !simId || !intervalMinutes)
+        return res.status(400).json({ error: "Campi obbligatori mancanti" });
+
+    const intervalMs = Math.max(5, parseInt(intervalMinutes)) * 60000;
+    const schedule = {
+        id: crypto.randomUUID(), name: name.trim(),
+        expected: expected.trim(), deviceId, simId,
+        intervalMs, intervalMinutes: parseInt(intervalMinutes),
+        enabled: true, lastRun: null,
+        nextRun: Date.now() + intervalMs,
+        createdAt: Date.now(), createdBy: req.user.username
+    };
+
+    schedules.push(schedule);
+    startScheduleJob(schedule);
+    console.log(`🗓 Nuovo schedule: ${schedule.name} ogni ${intervalMinutes}m`);
+    res.status(201).json(schedule);
+});
+
+app.patch("/schedules/:id", requireAdmin, (req, res) => {
+    const s = schedules.find(s => s.id === req.params.id);
+    if (!s) return res.status(404).json({ error: "Non trovato" });
+
+    if (req.body.enabled !== undefined) {
+        s.enabled = Boolean(req.body.enabled);
+        if (s.enabled) startScheduleJob(s);
+        else { clearInterval(scheduleJobs[s.id]); delete scheduleJobs[s.id]; }
+    }
+    res.json(s);
+});
+
+app.delete("/schedules/:id", requireAdmin, (req, res) => {
+    const idx = schedules.findIndex(s => s.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: "Non trovato" });
+    clearInterval(scheduleJobs[schedules[idx].id]);
+    delete scheduleJobs[schedules[idx].id];
+    schedules.splice(idx, 1);
+    res.json({ ok: true });
+});
 
 app.post("/test", requireAuth, (req, res) => {
     const { expected, deviceId, simId } = req.body;
