@@ -21,7 +21,8 @@ const DEVICE_API_KEY = process.env.DEVICE_API_KEY || (() => {
     console.log("⚠️  DEVICE_API_KEY non impostata. Chiave generata:", k);
     return k;
 })();
-const BCRYPT_ROUNDS  = 10;
+const BCRYPT_ROUNDS       = 10;
+const APP_JWT_EXPIRES_IN  = "30d";   // app stays logged in longer
 
 if (!process.env.JWT_SECRET) {
     console.warn("⚠️  JWT_SECRET non impostato — i token saranno invalidati al riavvio.");
@@ -30,12 +31,17 @@ if (!process.env.JWT_SECRET) {
 // ────────────────────────────────────────────
 // 🗄  STORAGE (in-memory)
 // ────────────────────────────────────────────
-let users         = [];
+let users         = [];   // dashboard users
 let sessions      = [];
 let devicesOnline = {};
 let smsList       = [];
 let tests         = [];
 let sims          = [];
+
+// ── App users (device owners — separate from dashboard users)
+let appUsers      = [];   // { id, username, passwordHash, createdAt, deviceIds[] }
+let appSessions   = [];   // { token, appUserId, createdAt, expiresAt }
+let deviceMeta    = {};   // deviceId → { nickname, appUserId, createdAt }
 
 // ── Seed admin al primo avvio
 async function seedAdmin() {
@@ -120,6 +126,39 @@ function authDevice(req, res, next) {
     if (!key || !safeCompare(key, DEVICE_API_KEY)) {
         return res.status(401).json({ error: "API Key non valida" });
     }
+    next();
+}
+
+// ────────────────────────────────────────────
+// 📱 APP AUTH HELPERS
+// ────────────────────────────────────────────
+function signAppToken(appUser) {
+    return jwt.sign(
+        { sub: appUser.id, username: appUser.username, type: "app" },
+        JWT_SECRET,
+        { expiresIn: APP_JWT_EXPIRES_IN }
+    );
+}
+
+function requireAppAuth(req, res, next) {
+    const auth = req.headers.authorization;
+    const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Token mancante" });
+
+    let payload;
+    try { payload = jwt.verify(token, JWT_SECRET); }
+    catch { return res.status(401).json({ error: "Token scaduto o non valido" }); }
+
+    if (payload.type !== "app") return res.status(401).json({ error: "Token non valido per app" });
+
+    const revoked = appSessions.find(s => s.token === token && s.revoked);
+    if (revoked) return res.status(401).json({ error: "Sessione revocata" });
+
+    const appUser = appUsers.find(u => u.id === payload.sub);
+    if (!appUser) return res.status(401).json({ error: "Utente app non trovato" });
+
+    req.appUser = appUser;
+    req.appToken = token;
     next();
 }
 
@@ -253,12 +292,23 @@ app.delete("/admin/users/:id", requireAdmin, (req, res) => {
 // 🔌 SOCKET.IO
 // ────────────────────────────────────────────
 io.use((socket, next) => {
+    // Device app → API key
     const deviceKey = socket.handshake.auth?.apiKey;
     if (deviceKey && safeCompare(deviceKey, DEVICE_API_KEY)) {
         socket.isDevice = true;
+
+        // If app user token also provided, bind device to user
+        const appToken = socket.handshake.auth?.appToken;
+        if (appToken) {
+            try {
+                const payload = jwt.verify(appToken, JWT_SECRET);
+                if (payload.type === "app") socket.appUserId = payload.sub;
+            } catch {}
+        }
         return next();
     }
 
+    // Dashboard → JWT
     const token = socket.handshake.auth?.token;
     if (token && verifyToken(token)) {
         socket.userId = verifyToken(token).sub;
@@ -281,8 +331,30 @@ io.on("connection", (socket) => {
             delete devicesOnline[existingEntry[0]];
         }
 
-        const device = { deviceId: data.deviceId, model: data.model || "unknown", phoneNumber: data.phoneNumber || "unknown", sims: existingSims, connectedAt: Date.now() };
+        const device = {
+            deviceId:    data.deviceId,
+            model:       data.model || "unknown",
+            phoneNumber: data.phoneNumber || "unknown",
+            sims:        existingSims,
+            connectedAt: Date.now(),
+            appUserId:   socket.appUserId || null
+        };
         devicesOnline[socket.id] = device;
+
+        // Init device metadata
+        if (!deviceMeta[data.deviceId]) {
+            deviceMeta[data.deviceId] = { nickname: null, model: data.model || "unknown", createdAt: Date.now() };
+        }
+        deviceMeta[data.deviceId].model = data.model || deviceMeta[data.deviceId].model;
+
+        // Bind device to app user
+        if (socket.appUserId) {
+            const appUser = appUsers.find(u => u.id === socket.appUserId);
+            if (appUser && !appUser.deviceIds.includes(data.deviceId)) {
+                appUser.deviceIds.push(data.deviceId);
+                console.log(`🔗 Device ${data.deviceId} legato a app user: ${appUser.username}`);
+            }
+        }
 
         (data.sims || []).forEach(incomingSim => {
             let sim = sims.find(s => s.deviceId === data.deviceId && s.simId === incomingSim.simId);
@@ -295,7 +367,7 @@ io.on("connection", (socket) => {
             if (!device.sims.find(s => s.simId === sim.simId)) device.sims.push({ simId: sim.simId, label: sim.label });
         });
 
-        console.log(`📱 Device online | ${device.deviceId} | ${device.model}`);
+        console.log(`📱 Device online | ${device.deviceId} | ${device.model} | user: ${socket.appUserId || "anonimo"}`);
     });
 
     socket.on("disconnect", () => {
@@ -498,6 +570,123 @@ app.get("/stats", requireAuth, (req, res) => {
         summary: { total24, pass24, fail24, deliveryRate, avgLatency, totalSims: sims.length, onlineDevices: Object.keys(devicesOnline).length },
         byCountry, hourly
     });
+});
+
+// ────────────────────────────────────────────
+// 📱 APP AUTH ENDPOINTS
+// ────────────────────────────────────────────
+
+// Register new app user
+app.post("/app/register", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password)   return res.status(400).json({ error: "Username e password obbligatori" });
+    if (username.trim().length < 3) return res.status(400).json({ error: "Username minimo 3 caratteri" });
+    if (password.length < 6)      return res.status(400).json({ error: "Password minimo 6 caratteri" });
+    if (appUsers.find(u => u.username === username.trim())) {
+        return res.status(409).json({ error: "Username già in uso" });
+    }
+
+    const appUser = {
+        id:           crypto.randomUUID(),
+        username:     username.trim(),
+        passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+        createdAt:    Date.now(),
+        deviceIds:    []
+    };
+
+    appUsers.push(appUser);
+    console.log(`📱 Nuovo app user: ${appUser.username}`);
+
+    const token = signAppToken(appUser);
+    appSessions.push({ token, appUserId: appUser.id, createdAt: Date.now(), expiresAt: Date.now() + 30 * 24 * 3600000, revoked: false });
+
+    res.status(201).json({ token, user: { id: appUser.id, username: appUser.username } });
+});
+
+// Login app user
+app.post("/app/login", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Campi obbligatori" });
+
+    const appUser = appUsers.find(u => u.username === username.trim());
+    const dummy   = "$2b$10$dummyhashfortimingreasonxxxxx.xx";
+    const valid   = appUser
+        ? await bcrypt.compare(password, appUser.passwordHash)
+        : (await bcrypt.compare(password, dummy), false);
+
+    if (!valid || !appUser) return res.status(401).json({ error: "Credenziali non valide" });
+
+    const token = signAppToken(appUser);
+    appSessions.push({ token, appUserId: appUser.id, createdAt: Date.now(), expiresAt: Date.now() + 30 * 24 * 3600000, revoked: false });
+
+    console.log(`📱 App login: ${appUser.username}`);
+    res.json({ token, user: { id: appUser.id, username: appUser.username, deviceIds: appUser.deviceIds } });
+});
+
+// Logout app user
+app.post("/app/logout", requireAppAuth, (req, res) => {
+    const s = appSessions.find(s => s.token === req.appToken);
+    if (s) s.revoked = true;
+    res.json({ ok: true });
+});
+
+// Get current app user info + their devices
+app.get("/app/me", requireAppAuth, (req, res) => {
+    const myDevices = req.appUser.deviceIds.map(dId => {
+        const meta   = deviceMeta[dId] || {};
+        const online = Object.values(devicesOnline).find(d => d.deviceId === dId);
+        const mySims = sims.filter(s => s.deviceId === dId).map(s => ({
+            simId: s.simId,
+            label: s.label,
+            candidate: s.candidate
+        }));
+        return {
+            deviceId:  dId,
+            nickname:  meta.nickname || dId,
+            online:    !!online,
+            model:     online?.model || meta.model || "unknown",
+            sims:      mySims
+        };
+    });
+
+    res.json({
+        id:        req.appUser.id,
+        username:  req.appUser.username,
+        devices:   myDevices
+    });
+});
+
+// Rename device (only owner can rename)
+app.patch("/app/device/:deviceId/rename", requireAppAuth, (req, res) => {
+    const { deviceId } = req.params;
+    const { nickname }  = req.body;
+
+    if (!req.appUser.deviceIds.includes(deviceId)) {
+        return res.status(403).json({ error: "Non sei il proprietario di questo device" });
+    }
+
+    if (!nickname?.trim()) return res.status(400).json({ error: "Nickname obbligatorio" });
+
+    if (!deviceMeta[deviceId]) deviceMeta[deviceId] = {};
+    deviceMeta[deviceId].nickname = nickname.trim();
+
+    console.log(`✏️  Device rinominato: ${deviceId} → ${nickname.trim()}`);
+    res.json({ ok: true, nickname: nickname.trim() });
+});
+
+// Get SMS for this app user (only their devices)
+app.get("/app/sms", requireAppAuth, (req, res) => {
+    const myDeviceIds = req.appUser.deviceIds;
+    const mySms = smsList
+        .filter(s => myDeviceIds.includes(s.deviceId))
+        .slice(-500); // last 500
+    res.json(mySms);
+});
+
+// Get SIMs for this app user
+app.get("/app/sims", requireAppAuth, (req, res) => {
+    const myDeviceIds = req.appUser.deviceIds;
+    res.json(sims.filter(s => myDeviceIds.includes(s.deviceId)));
 });
 
 // ────────────────────────────────────────────
