@@ -1,8 +1,10 @@
-const express = require("express");
-const cors    = require("cors");
-const path    = require("path");
-const http    = require("http");
-const crypto  = require("crypto");
+const express  = require("express");
+const cors     = require("cors");
+const path     = require("path");
+const http     = require("http");
+const crypto   = require("crypto");
+const bcrypt   = require("bcrypt");
+const jwt      = require("jsonwebtoken");
 const { Server } = require("socket.io");
 
 const app    = express();
@@ -10,241 +12,324 @@ const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: "*" } });
 
 // ────────────────────────────────────────────
-// 🔑 CONFIGURAZIONE AUTH
-//
-//  Imposta la tua API key in una variabile d'ambiente:
-//      export DASHBOARD_API_KEY="la-tua-chiave-segreta"
-//
-//  Se non impostata, viene generata automaticamente ad ogni avvio
-//  e stampata in console — cambiala in produzione!
+// ⚙️  CONFIG
 // ────────────────────────────────────────────
-const DASHBOARD_API_KEY = process.env.DASHBOARD_API_KEY || (() => {
-    const generated = crypto.randomBytes(24).toString("hex");
-    console.log("⚠️  DASHBOARD_API_KEY non impostata. Chiave generata per questa sessione:");
-    console.log(`    ${generated}`);
-    console.log("    Impostala come variabile d'ambiente per renderla persistente.");
-    return generated;
+const JWT_SECRET     = process.env.JWT_SECRET     || crypto.randomBytes(48).toString("hex");
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
+const DEVICE_API_KEY = process.env.DEVICE_API_KEY || (() => {
+    const k = crypto.randomBytes(24).toString("hex");
+    console.log("⚠️  DEVICE_API_KEY non impostata. Chiave generata:", k);
+    return k;
 })();
+const BCRYPT_ROUNDS  = 10;
 
-// Chiave per le app Android che inviano SMS (può essere uguale o diversa)
-const DEVICE_API_KEY = process.env.DEVICE_API_KEY || DASHBOARD_API_KEY;
+if (!process.env.JWT_SECRET) {
+    console.warn("⚠️  JWT_SECRET non impostato — i token saranno invalidati al riavvio.");
+}
 
 // ────────────────────────────────────────────
 // 🗄  STORAGE (in-memory)
 // ────────────────────────────────────────────
+let users         = [];
+let sessions      = [];
 let devicesOnline = {};
 let smsList       = [];
 let tests         = [];
 let sims          = [];
 
-// ────────────────────────────────────────────
-// 🛡  MIDDLEWARE DI AUTENTICAZIONE
-// ────────────────────────────────────────────
+// ── Seed admin al primo avvio
+async function seedAdmin() {
+    const adminUser = process.env.ADMIN_USERNAME || "admin";
+    const adminPass = process.env.ADMIN_PASSWORD || (() => {
+        const p = crypto.randomBytes(12).toString("base64url");
+        console.log("──────────────────────────────────────");
+        console.log("👤 Account admin creato automaticamente");
+        console.log(`   Username : ${adminUser}`);
+        console.log(`   Password : ${p}`);
+        console.log("   Cambiala subito dal pannello Admin!");
+        console.log("──────────────────────────────────────");
+        return p;
+    })();
 
-/**
- * Confronto timing-safe per prevenire timing attacks
- */
-function safeCompare(a, b) {
-    try {
-        return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-    } catch {
-        return false;
-    }
+    const hash = await bcrypt.hash(adminPass, BCRYPT_ROUNDS);
+    users.push({
+        id:           crypto.randomUUID(),
+        username:     adminUser,
+        passwordHash: hash,
+        role:         "admin",
+        createdAt:    Date.now(),
+        lastLogin:    null,
+        active:       true
+    });
 }
 
-/**
- * Middleware: protegge gli endpoint della dashboard
- * Accetta la chiave via header X-API-Key o query ?api_key=
- */
-function authDashboard(req, res, next) {
-    const key = req.headers["x-api-key"] || req.query.api_key;
+// ────────────────────────────────────────────
+// 🛡  AUTH HELPERS
+// ────────────────────────────────────────────
+function signToken(user) {
+    return jwt.sign(
+        { sub: user.id, username: user.username, role: user.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+    );
+}
 
-    if (!key || !safeCompare(key, DASHBOARD_API_KEY)) {
-        return res.status(401).json({ error: "Non autorizzato" });
-    }
+function verifyToken(token) {
+    try { return jwt.verify(token, JWT_SECRET); }
+    catch { return null; }
+}
 
+function extractToken(req) {
+    const auth = req.headers.authorization;
+    if (auth?.startsWith("Bearer ")) return auth.slice(7);
+    return req.query.token || null;
+}
+
+function safeCompare(a, b) {
+    try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); }
+    catch { return false; }
+}
+
+function requireAuth(req, res, next) {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "Token mancante" });
+
+    const payload = verifyToken(token);
+    if (!payload)  return res.status(401).json({ error: "Token non valido o scaduto" });
+
+    const revoked = sessions.find(s => s.token === token && s.revoked);
+    if (revoked)   return res.status(401).json({ error: "Sessione revocata" });
+
+    const user = users.find(u => u.id === payload.sub && u.active);
+    if (!user)     return res.status(401).json({ error: "Utente non trovato o disabilitato" });
+
+    req.user  = user;
+    req.token = token;
     next();
 }
 
-/**
- * Middleware: protegge gli endpoint dei device (invio SMS)
- * Può usare una chiave separata (DEVICE_API_KEY)
- */
+function requireAdmin(req, res, next) {
+    requireAuth(req, res, () => {
+        if (req.user.role !== "admin") return res.status(403).json({ error: "Solo admin" });
+        next();
+    });
+}
+
 function authDevice(req, res, next) {
     const key = req.headers["x-api-key"] || req.query.api_key;
-
     if (!key || !safeCompare(key, DEVICE_API_KEY)) {
-        return res.status(401).json({ error: "Non autorizzato" });
+        return res.status(401).json({ error: "API Key non valida" });
     }
-
     next();
 }
 
 // ────────────────────────────────────────────
-// ⚙️  MIDDLEWARE GLOBALE
+// ⚙️  MIDDLEWARE
 // ────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-
-// ────────────────────────────────────────────
-// 🌐 STATIC + ROOT (pubblici — servono la dashboard)
-// ────────────────────────────────────────────
 app.use(express.static(__dirname));
 
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+
+// ────────────────────────────────────────────
+// 🔐 AUTH ENDPOINTS
+// ────────────────────────────────────────────
+app.post("/auth/login", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Campi obbligatori" });
+
+    const user = users.find(u => u.username === username);
+    const dummyHash = "$2b$10$dummyhashfortimingreasonxxxxx.xx";
+
+    const valid = user
+        ? await bcrypt.compare(password, user.passwordHash)
+        : (await bcrypt.compare(password, dummyHash), false);
+
+    if (!valid || !user?.active) return res.status(401).json({ error: "Credenziali non valide" });
+
+    const token = signToken(user);
+    sessions.push({ token, userId: user.id, createdAt: Date.now(), expiresAt: Date.now() + 8 * 3600000, revoked: false });
+    user.lastLogin = Date.now();
+
+    console.log(`✅ Login: ${user.username} (${user.role})`);
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+});
+
+app.post("/auth/logout", requireAuth, (req, res) => {
+    const s = sessions.find(s => s.token === req.token);
+    if (s) s.revoked = true;
+    console.log(`👋 Logout: ${req.user.username}`);
+    res.json({ ok: true });
+});
+
+app.get("/auth/me", requireAuth, (req, res) => {
+    res.json({ id: req.user.id, username: req.user.username, role: req.user.role, lastLogin: req.user.lastLogin });
+});
+
+app.post("/auth/change-password", requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: "Campi obbligatori" });
+    if (newPassword.length < 8) return res.status(400).json({ error: "Minimo 8 caratteri" });
+
+    const valid = await bcrypt.compare(currentPassword, req.user.passwordHash);
+    if (!valid) return res.status(401).json({ error: "Password attuale errata" });
+
+    req.user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    sessions.forEach(s => { if (s.userId === req.user.id && s.token !== req.token) s.revoked = true; });
+
+    console.log(`🔑 Password cambiata: ${req.user.username}`);
+    res.json({ ok: true });
 });
 
 // ────────────────────────────────────────────
-// 🔐 AUTH: VERIFY (usato dal frontend per validare la chiave)
+// 👥 ADMIN — GESTIONE UTENTI
 // ────────────────────────────────────────────
-app.post("/auth/verify", authDashboard, (req, res) => {
+app.get("/admin/users", requireAdmin, (req, res) => {
+    res.json(users.map(u => ({
+        id: u.id, username: u.username, role: u.role,
+        active: u.active, createdAt: u.createdAt, lastLogin: u.lastLogin
+    })));
+});
+
+app.post("/admin/users", requireAdmin, async (req, res) => {
+    const { username, password, role = "user" } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Campi obbligatori" });
+    if (password.length < 8) return res.status(400).json({ error: "Password minimo 8 caratteri" });
+    if (!["user", "admin"].includes(role)) return res.status(400).json({ error: "Ruolo non valido" });
+    if (users.find(u => u.username === username)) return res.status(409).json({ error: "Username già in uso" });
+
+    const user = {
+        id: crypto.randomUUID(), username: username.trim(),
+        passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+        role, createdAt: Date.now(), lastLogin: null, active: true
+    };
+
+    users.push(user);
+    console.log(`👤 Nuovo utente: ${user.username} (${user.role})`);
+    res.status(201).json({ id: user.id, username: user.username, role: user.role, active: user.active, createdAt: user.createdAt });
+});
+
+app.patch("/admin/users/:id", requireAdmin, async (req, res) => {
+    const user = users.find(u => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: "Utente non trovato" });
+    if (user.id === req.user.id) return res.status(400).json({ error: "Usa /auth/change-password per il tuo account" });
+
+    const { role, active, password } = req.body;
+
+    if (role !== undefined) {
+        if (!["user", "admin"].includes(role)) return res.status(400).json({ error: "Ruolo non valido" });
+        user.role = role;
+    }
+
+    if (active !== undefined) {
+        user.active = Boolean(active);
+        if (!user.active) sessions.forEach(s => { if (s.userId === user.id) s.revoked = true; });
+    }
+
+    if (password) {
+        if (password.length < 8) return res.status(400).json({ error: "Password minimo 8 caratteri" });
+        user.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        sessions.forEach(s => { if (s.userId === user.id) s.revoked = true; });
+    }
+
+    console.log(`✏️  Utente aggiornato: ${user.username}`);
+    res.json({ ok: true, username: user.username, role: user.role, active: user.active });
+});
+
+app.delete("/admin/users/:id", requireAdmin, (req, res) => {
+    const idx = users.findIndex(u => u.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: "Utente non trovato" });
+    if (users[idx].id === req.user.id) return res.status(400).json({ error: "Non puoi eliminare te stesso" });
+
+    const removed = users.splice(idx, 1)[0];
+    sessions.forEach(s => { if (s.userId === removed.id) s.revoked = true; });
+
+    console.log(`🗑  Utente eliminato: ${removed.username}`);
     res.json({ ok: true });
 });
 
 // ────────────────────────────────────────────
 // 🔌 SOCKET.IO
-//    I device si autenticano inviando la chiave nel handshake
 // ────────────────────────────────────────────
 io.use((socket, next) => {
-    const key = socket.handshake.auth?.apiKey || socket.handshake.query?.api_key;
-
-    if (!key || !safeCompare(key, DEVICE_API_KEY)) {
-        console.warn("🚫 Socket rifiutato — chiave non valida");
-        return next(new Error("Non autorizzato"));
+    const deviceKey = socket.handshake.auth?.apiKey;
+    if (deviceKey && safeCompare(deviceKey, DEVICE_API_KEY)) {
+        socket.isDevice = true;
+        return next();
     }
 
-    next();
+    const token = socket.handshake.auth?.token;
+    if (token && verifyToken(token)) {
+        socket.userId = verifyToken(token).sub;
+        return next();
+    }
+
+    next(new Error("Non autorizzato"));
 });
 
 io.on("connection", (socket) => {
-    console.log("🔌 Device connesso:", socket.id);
+    console.log(socket.isDevice ? `🔌 Device: ${socket.id}` : `🔌 Dashboard: ${socket.id}`);
 
     socket.on("register_device", (data) => {
-        if (!data?.deviceId) return;
+        if (!socket.isDevice || !data?.deviceId) return;
 
-        // Se il device si riconnette, recupera le SIM già note
-        const existingEntry = Object.entries(devicesOnline)
-            .find(([, d]) => d.deviceId === data.deviceId);
-
+        const existingEntry = Object.entries(devicesOnline).find(([, d]) => d.deviceId === data.deviceId);
         let existingSims = [];
         if (existingEntry) {
-            const [oldSocketId, oldDevice] = existingEntry;
-            existingSims = oldDevice.sims || [];
-            delete devicesOnline[oldSocketId];
+            existingSims = existingEntry[1].sims || [];
+            delete devicesOnline[existingEntry[0]];
         }
 
-        const device = {
-            deviceId:    data.deviceId,
-            model:       data.model       || "unknown",
-            phoneNumber: data.phoneNumber || "unknown",
-            sims:        existingSims,
-            connectedAt: Date.now()
-        };
-
+        const device = { deviceId: data.deviceId, model: data.model || "unknown", phoneNumber: data.phoneNumber || "unknown", sims: existingSims, connectedAt: Date.now() };
         devicesOnline[socket.id] = device;
 
-        // Aggiorna / crea SIM dalla registrazione
         (data.sims || []).forEach(incomingSim => {
-            let sim = sims.find(
-                s => s.deviceId === data.deviceId && s.simId === incomingSim.simId
-            );
-
+            let sim = sims.find(s => s.deviceId === data.deviceId && s.simId === incomingSim.simId);
             if (!sim) {
-                sim = {
-                    id:        Date.now() + Math.random(),
-                    deviceId:  data.deviceId,
-                    simId:     incomingSim.simId,
-                    label:     null,
-                    candidate: null,
-                    senders:   [],
-                    lastSeen:  Date.now()
-                };
+                sim = { id: Date.now() + Math.random(), deviceId: data.deviceId, simId: incomingSim.simId, label: null, candidate: null, senders: [], lastSeen: Date.now() };
                 sims.push(sim);
-                console.log("🔥 Nuova SIM da register:", sim.simId);
             }
-
-            if (incomingSim.number?.trim()) {
-                sim.candidate = incomingSim.number.trim();
-                console.log("🟡 Candidate aggiornato:", sim.simId, sim.candidate);
-            }
-
+            if (incomingSim.number?.trim()) sim.candidate = incomingSim.number.trim();
             sim.lastSeen = Date.now();
-
-            const alreadyInDevice = device.sims.find(s => s.simId === sim.simId);
-            if (!alreadyInDevice) {
-                device.sims.push({ simId: sim.simId, label: sim.label });
-            }
+            if (!device.sims.find(s => s.simId === sim.simId)) device.sims.push({ simId: sim.simId, label: sim.label });
         });
 
-        console.log(`📱 Device online | id=${device.deviceId} | model=${device.model} | sims=${device.sims.length}`);
+        console.log(`📱 Device online | ${device.deviceId} | ${device.model}`);
     });
 
     socket.on("disconnect", () => {
         const device = devicesOnline[socket.id];
-        console.log(device
-            ? `❌ Device offline: ${device.deviceId}`
-            : `❌ Socket disconnesso: ${socket.id}`
-        );
-        delete devicesOnline[socket.id];
+        if (device) { console.log("❌ Device offline:", device.deviceId); delete devicesOnline[socket.id]; }
     });
 });
 
 // ────────────────────────────────────────────
-// 📩 RICEZIONE SMS  [protetto — device key]
+// 📩 SMS / TEST / SIM / DEVICES
 // ────────────────────────────────────────────
 app.post("/sms", authDevice, (req, res) => {
     const sms = req.body;
-
-    if (!sms?.deviceId || !sms?.simId) {
-        return res.status(400).json({ error: "deviceId e simId sono obbligatori" });
-    }
+    if (!sms?.deviceId || !sms?.simId) return res.status(400).json({ error: "Campi obbligatori" });
 
     smsList.push({ ...sms, timestamp: sms.timestamp || Date.now() });
-    console.log("📩 SMS ricevuto:", sms.deviceId, sms.simId, sms.sender);
 
-    // Trova o crea SIM
     let sim = sims.find(s => s.deviceId === sms.deviceId && s.simId === sms.simId);
     if (!sim) {
-        sim = {
-            id:        Date.now() + Math.random(),
-            deviceId:  sms.deviceId,
-            simId:     sms.simId,
-            label:     null,
-            candidate: null,
-            senders:   [],
-            lastSeen:  Date.now()
-        };
+        sim = { id: Date.now() + Math.random(), deviceId: sms.deviceId, simId: sms.simId, label: null, candidate: null, senders: [], lastSeen: Date.now() };
         sims.push(sim);
-        console.log("🔥 Nuova SIM rilevata via SMS:", sim.simId);
     }
-
     sim.lastSeen = Date.now();
-    if (sms.sender && !sim.senders.includes(sms.sender)) {
-        sim.senders.push(sms.sender);
-    }
-
-    // Aggiungi SIM al device online se mancante
+    if (sms.sender && !sim.senders.includes(sms.sender)) sim.senders.push(sms.sender);
     Object.values(devicesOnline).forEach(d => {
-        if (d.deviceId === sms.deviceId && !d.sims.find(s => s.simId === sms.simId)) {
-            d.sims.push({ simId: sms.simId, label: null });
-        }
+        if (d.deviceId === sms.deviceId && !d.sims.find(s => s.simId === sms.simId)) d.sims.push({ simId: sms.simId, label: null });
     });
 
     io.emit("new_sms", sms);
 
-    // Controlla test pendenti
     tests.forEach(test => {
-        if (
-            test.status   === "PENDING"    &&
-            sms.deviceId  === test.deviceId &&
-            sms.simId     === test.simId    &&
-            sms.message?.toLowerCase().includes(test.expected.toLowerCase())
-        ) {
-            test.status      = "PASS";
-            test.result      = sms.message;
-            test.completedAt = Date.now();
-            console.log("✅ TEST PASS:", test.id);
+        if (test.status === "PENDING" && sms.deviceId === test.deviceId && sms.simId === test.simId &&
+            sms.message?.toLowerCase().includes(test.expected.toLowerCase())) {
+            test.status = "PASS"; test.result = sms.message; test.completedAt = Date.now();
             io.emit("test_update", test);
         }
     });
@@ -252,79 +337,30 @@ app.post("/sms", authDevice, (req, res) => {
     res.json({ status: "ok" });
 });
 
-// ────────────────────────────────────────────
-// 📥 LISTA SMS  [protetto — dashboard]
-// ────────────────────────────────────────────
-app.get("/sms", authDashboard, (req, res) => {
-    res.json(smsList);
-});
+app.get("/sms",            requireAuth, (req, res) => res.json(smsList));
+app.get("/sims",           requireAuth, (req, res) => res.json(sims));
+app.get("/devices-online", requireAuth, (req, res) => res.json(Object.values(devicesOnline)));
+app.get("/tests",          requireAuth, (req, res) => res.json(tests));
 
-// ────────────────────────────────────────────
-// 🧪 CREA TEST  [protetto — dashboard]
-// ────────────────────────────────────────────
-app.post("/test", authDashboard, (req, res) => {
+app.post("/test", requireAuth, (req, res) => {
     const { expected, deviceId, simId } = req.body;
+    if (!expected || !deviceId || !simId) return res.status(400).json({ error: "Campi obbligatori" });
 
-    if (!expected || !deviceId || !simId) {
-        return res.status(400).json({ error: "expected, deviceId e simId sono obbligatori" });
-    }
-
-    const test = {
-        id:          Date.now(),
-        expected:    expected.trim(),
-        deviceId,
-        simId,
-        status:      "PENDING",
-        createdAt:   Date.now(),
-        completedAt: null,
-        result:      null,
-        timeout:     30000
-    };
-
+    const test = { id: Date.now(), expected: expected.trim(), deviceId, simId, status: "PENDING", createdAt: Date.now(), completedAt: null, result: null, timeout: 30000, createdBy: req.user.username };
     tests.push(test);
-    console.log("🧪 Nuovo test:", test.id, test.expected);
     res.json(test);
 });
 
-// ────────────────────────────────────────────
-// 📊 LISTA TEST  [protetto — dashboard]
-// ────────────────────────────────────────────
-app.get("/tests", authDashboard, (req, res) => {
-    res.json(tests);
-});
-
-// ────────────────────────────────────────────
-// 🏷  SET SIM LABEL  [protetto — dashboard]
-// ────────────────────────────────────────────
-app.post("/set-sim-label", authDashboard, (req, res) => {
+app.post("/set-sim-label", requireAuth, (req, res) => {
     const { deviceId, simId, label } = req.body;
-
-    if (!deviceId || !simId) {
-        return res.status(400).json({ error: "deviceId e simId sono obbligatori" });
-    }
+    if (!deviceId || !simId) return res.status(400).json({ error: "Campi obbligatori" });
 
     const sim = sims.find(s => s.deviceId === deviceId && s.simId === simId);
     if (!sim) return res.status(404).json({ error: "SIM non trovata" });
 
-    sim.label     = label?.trim() || null;
+    sim.label = label?.trim() || null;
     sim.candidate = null;
-
-    console.log("🏷  Label impostata:", simId, sim.label);
     res.json({ ok: true });
-});
-
-// ────────────────────────────────────────────
-// 📶 LISTA SIM  [protetto — dashboard]
-// ────────────────────────────────────────────
-app.get("/sims", authDashboard, (req, res) => {
-    res.json(sims);
-});
-
-// ────────────────────────────────────────────
-// 📱 DEVICE ONLINE  [protetto — dashboard]
-// ────────────────────────────────────────────
-app.get("/devices-online", authDashboard, (req, res) => {
-    res.json(Object.values(devicesOnline));
 });
 
 // ────────────────────────────────────────────
@@ -334,18 +370,24 @@ setInterval(() => {
     const now = Date.now();
     tests.forEach(test => {
         if (test.status === "PENDING" && now - test.createdAt > test.timeout) {
-            test.status      = "FAIL";
-            test.completedAt = Date.now();
-            console.log("❌ TEST FAIL (timeout):", test.id);
+            test.status = "FAIL"; test.completedAt = Date.now();
             io.emit("test_update", test);
         }
     });
 }, 5000);
 
+setInterval(() => {
+    const now = Date.now();
+    sessions = sessions.filter(s => s.expiresAt > now || !s.revoked);
+}, 3600000);
+
 // ────────────────────────────────────────────
 // 🚀 START
 // ────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🚀 Server avviato su porta ${PORT}`);
+seedAdmin().then(() => {
+    server.listen(PORT, () => {
+        console.log(`🚀 Server su porta ${PORT}`);
+        console.log(`📱 DEVICE_API_KEY: ${DEVICE_API_KEY}`);
+    });
 });

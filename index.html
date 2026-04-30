@@ -19,8 +19,9 @@
             --yellow-dim: #ffd74020;
             --blue:       #38bdf8;
             --blue-dim:   #38bdf815;
+            --violet:     #a78bfa;
+            --violet-dim: #a78bfa18;
             --slate:      #334155;
-            --muted:      #475569;
             --text:       #e2e8f0;
             --text-dim:   #64748b;
             --mono:       'JetBrains Mono', monospace;
@@ -37,637 +38,631 @@
             overflow: hidden;
         }
 
+        /* ══ SCREENS ══ */
+        .screen { display: none; }
+        .screen.active { display: block; }
+
         /* ══════════════════════════════════════
-           LOGIN SCREEN
+           LOGIN
         ══════════════════════════════════════ */
-        #login-screen {
+        #screen-login {
             position: fixed;
             inset: 0;
-            z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
             background: var(--bg);
-            transition: opacity .4s ease, transform .4s ease;
         }
 
-        #login-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-            transform: scale(1.04);
-        }
-
-        /* subtle grid background */
-        #login-screen::before {
+        #screen-login::before {
             content: '';
             position: absolute;
             inset: 0;
-            background-image:
-                linear-gradient(var(--border) 1px, transparent 1px),
-                linear-gradient(90deg, var(--border) 1px, transparent 1px);
-            background-size: 48px 48px;
-            opacity: .35;
+            background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 52px 52px;
+            opacity: .3;
         }
 
-        /* green glow orb */
-        #login-screen::after {
+        #screen-login::after {
             content: '';
             position: absolute;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, #00e67612 0%, transparent 70%);
-            top: 50%;
-            left: 50%;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, #00e67610 0%, transparent 70%);
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
         }
 
-        .login-box {
+        .login-card {
             position: relative;
             z-index: 1;
-            width: 420px;
+            width: 400px;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 40px 36px;
-            box-shadow: 0 40px 80px #00000060, 0 0 0 1px #ffffff08;
-            animation: loginIn .5s ease both;
+            padding: 36px 32px;
+            box-shadow: 0 40px 80px #00000070, 0 0 0 1px #ffffff06;
+            animation: fadeUp .45s ease both;
         }
 
-        @keyframes loginIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 
         .login-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 32px;
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 28px;
         }
 
         .login-logo-icon {
-            width: 44px; height: 44px;
+            width: 42px; height: 42px;
             background: var(--green-dim);
             border: 1px solid #00e67640;
-            border-radius: 12px;
-            display: grid;
-            place-items: center;
-            font-size: 22px;
+            border-radius: 11px;
+            display: grid; place-items: center; font-size: 20px;
         }
 
-        .login-logo-text {
-            font-family: var(--mono);
-            font-weight: 700;
-            font-size: 16px;
-            color: var(--green);
-            letter-spacing: .5px;
-            line-height: 1.2;
-        }
+        .login-logo-name { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--green); }
+        .login-logo-sub  { font-family: var(--mono); font-size: 9px;  color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
 
-        .login-logo-sub {
+        .field-label {
             font-family: var(--mono);
-            font-size: 10px;
+            font-size: 10px; font-weight: 600;
             color: var(--text-dim);
             letter-spacing: 1.5px;
             text-transform: uppercase;
+            margin-bottom: 7px;
         }
 
-        .login-label {
-            font-family: var(--mono);
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--text-dim);
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
+        .field-wrap { position: relative; margin-bottom: 14px; }
 
-        .login-input-wrap {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .login-input {
+        .field-input {
             width: 100%;
-            font-family: var(--mono);
-            font-size: 14px;
+            font-family: var(--mono); font-size: 13px;
             background: var(--surface2);
             border: 1px solid var(--border);
-            border-radius: 9px;
+            border-radius: 8px;
             color: var(--text);
-            padding: 13px 44px 13px 14px;
+            padding: 11px 40px 11px 13px;
             outline: none;
             transition: border-color .2s, box-shadow .2s;
-            letter-spacing: 2px;
         }
 
-        .login-input:focus {
+        .field-input:focus {
             border-color: var(--green);
             box-shadow: 0 0 0 3px var(--green-dim);
         }
 
-        .toggle-pw {
-            position: absolute;
-            right: 12px;
-            top: 50%;
+        .field-input::placeholder { color: var(--text-dim); }
+
+        .eye-btn {
+            position: absolute; right: 11px; top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--text-dim);
-            cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
+            background: none; border: none;
+            color: var(--text-dim); cursor: pointer;
+            font-size: 15px; padding: 3px;
             transition: color .2s;
         }
-
-        .toggle-pw:hover { color: var(--text); }
+        .eye-btn:hover { color: var(--text); }
 
         .login-btn {
             width: 100%;
-            font-family: var(--mono);
-            font-size: 13px;
-            font-weight: 700;
-            background: var(--green);
-            color: #000;
-            border: none;
-            border-radius: 9px;
-            padding: 14px;
-            cursor: pointer;
+            font-family: var(--mono); font-size: 13px; font-weight: 700;
+            background: var(--green); color: #000;
+            border: none; border-radius: 8px;
+            padding: 13px; cursor: pointer;
             letter-spacing: .5px;
             transition: opacity .15s, transform .1s, box-shadow .2s;
-            box-shadow: 0 0 24px #00e67630;
+            box-shadow: 0 0 24px #00e67628;
+            margin-top: 4px;
         }
-
-        .login-btn:hover  { opacity: .9; box-shadow: 0 0 36px #00e67650; }
+        .login-btn:hover  { opacity: .88; box-shadow: 0 0 36px #00e67645; }
         .login-btn:active { transform: scale(.98); }
 
+        .login-btn:disabled { opacity: .4; cursor: not-allowed; }
+
         .login-error {
-            margin-top: 14px;
-            padding: 10px 14px;
+            margin-top: 12px;
+            padding: 9px 13px;
             background: var(--red-dim);
             border: 1px solid var(--red);
             border-radius: 7px;
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--red);
+            font-family: var(--mono); font-size: 12px; color: var(--red);
             display: none;
-            animation: shake .3s ease;
         }
+        .login-error.show { display: block; animation: shake .3s ease; }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25%  { transform: translateX(-6px); }
-            75%  { transform: translateX(6px); }
-        }
+        @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-5px); } 75% { transform:translateX(5px); } }
 
-        .login-error.show { display: block; }
-
-        .login-hint {
-            margin-top: 20px;
-            text-align: center;
-            font-family: var(--mono);
-            font-size: 10px;
-            color: var(--text-dim);
-            letter-spacing: .5px;
-        }
-
-        /* attempts indicator */
-        .login-attempts {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            margin-top: 14px;
-        }
-
-        .attempt-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--border);
-            transition: background .3s;
-        }
-
+        .attempt-row { display: flex; gap: 5px; justify-content: center; margin-top: 13px; }
+        .attempt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background .3s; }
         .attempt-dot.used { background: var(--red); }
 
-
         /* ══════════════════════════════════════
-           DASHBOARD
+           DASHBOARD + ADMIN  (layout condiviso)
         ══════════════════════════════════════ */
-        #dashboard { display: none; }
-        #dashboard.visible { display: block; }
+        #screen-dashboard,
+        #screen-admin {
+            height: 100vh;
+            display: none;
+            flex-direction: column;
+        }
 
+        #screen-dashboard.active,
+        #screen-admin.active { display: flex; }
+
+        /* ── HEADER ── */
         header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 0 24px;
-            height: 56px;
+            height: 54px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            padding: 0 20px;
+            flex-shrink: 0;
+            z-index: 10;
         }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: var(--mono);
-            font-weight: 700;
-            font-size: 14px;
-            color: var(--green);
-            letter-spacing: .5px;
+        .hdr-left { display: flex; align-items: center; gap: 10px; }
+
+        .hdr-logo {
+            display: flex; align-items: center; gap: 9px;
+            font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--green);
         }
 
-        .logo-icon {
-            width: 30px; height: 30px;
-            background: var(--green-dim);
-            border: 1px solid #00e67640;
-            border-radius: 8px;
-            display: grid;
-            place-items: center;
-            font-size: 15px;
+        .hdr-logo-icon {
+            width: 28px; height: 28px;
+            background: var(--green-dim); border: 1px solid #00e67635;
+            border-radius: 7px; display: grid; place-items: center; font-size: 14px;
         }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .nav-btn {
+            font-family: var(--mono); font-size: 11px; font-weight: 600;
+            background: none; border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text-dim);
+            padding: 5px 12px; cursor: pointer;
+            transition: all .2s; letter-spacing: .3px;
         }
+        .nav-btn:hover        { border-color: var(--green); color: var(--green); }
+        .nav-btn.active-nav   { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+        .nav-btn.admin-nav    { border-color: var(--violet); color: var(--violet); }
+        .nav-btn.admin-nav:hover { background: var(--violet-dim); }
 
-        .status-pill {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            font-family: var(--mono);
-            color: var(--text-dim);
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 4px 12px;
+        .hdr-right { display: flex; align-items: center; gap: 8px; }
+
+        .session-chip {
+            font-family: var(--mono); font-size: 11px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 4px 10px; color: var(--text-dim);
         }
+        .session-chip b { color: var(--blue); }
 
-        .pulse {
-            width: 7px; height: 7px;
-            background: var(--green);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
+        .role-chip {
+            font-family: var(--mono); font-size: 10px; font-weight: 700;
+            padding: 3px 8px; border-radius: 4px; letter-spacing: .5px;
         }
+        .role-chip.admin { background: var(--violet-dim); border: 1px solid var(--violet); color: var(--violet); }
+        .role-chip.user  { background: var(--blue-dim);   border: 1px solid var(--blue);   color: var(--blue); }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: .4; }
+        .pulse-pill {
+            display: flex; align-items: center; gap: 5px;
+            font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 20px; padding: 4px 10px;
         }
-
-        /* Session info */
-        .session-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text-dim);
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 5px 12px;
-        }
-
-        .session-info span { color: var(--blue); }
+        .pulse { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: blink 2s infinite; }
+        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
 
         .logout-btn {
-            font-family: var(--mono);
-            font-size: 11px;
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            color: var(--text-dim);
-            padding: 5px 12px;
-            cursor: pointer;
-            transition: border-color .2s, color .2s;
+            font-family: var(--mono); font-size: 11px;
+            background: none; border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text-dim);
+            padding: 5px 10px; cursor: pointer; transition: all .2s;
         }
-
         .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
-        /* ── LAYOUT ── */
-        .layout {
+        /* ── DASHBOARD LAYOUT ── */
+        .dash-body {
             display: grid;
-            grid-template-columns: 260px 1fr 320px;
-            height: calc(100vh - 56px);
+            grid-template-columns: 250px 1fr 310px;
+            flex: 1;
+            overflow: hidden;
         }
 
         .panel {
             border-right: 1px solid var(--border);
             overflow-y: auto;
-            padding: 18px 14px;
+            padding: 16px 13px;
         }
-
         .panel:last-child { border-right: none; }
 
         .panel-title {
-            font-family: var(--mono);
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-dim);
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-family: var(--mono); font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim);
+            margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
         }
-
-        .panel-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
+        .panel-title::after { content:''; flex:1; height:1px; background: var(--border); }
 
         /* ── CARDS ── */
         .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 13px;
-            margin-bottom: 9px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 9px; padding: 12px; margin-bottom: 8px;
             transition: border-color .2s;
         }
-
         .card:hover { border-color: var(--slate); }
-        .card.pass    { border-left: 3px solid var(--green); background: linear-gradient(90deg, var(--green-dim) 0%, var(--surface) 60%); }
-        .card.fail    { border-left: 3px solid var(--red);   background: linear-gradient(90deg, var(--red-dim)   0%, var(--surface) 60%); }
+
+        .card.pass    { border-left: 3px solid var(--green); background: linear-gradient(90deg,var(--green-dim) 0%,var(--surface) 55%); }
+        .card.fail    { border-left: 3px solid var(--red);   background: linear-gradient(90deg,var(--red-dim)   0%,var(--surface) 55%); }
         .card.pending { border-left: 3px solid var(--slate); }
         .card.device  { border-left: 3px solid var(--green); }
 
-        .card-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .card-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
         .card-sub   { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
 
-        .sim-block {
-            margin-top: 10px;
-            padding: 10px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .sim-id  { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
-        .sim-row { display: flex; gap: 6px; }
+        .sim-block { margin-top: 9px; padding: 9px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; }
+        .sim-id    { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 5px; }
+        .sim-row   { display: flex; gap: 5px; }
 
         /* ── INPUTS ── */
         input, select {
-            font-family: var(--mono);
-            font-size: 13px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            color: var(--text);
-            padding: 8px 12px;
-            outline: none;
-            transition: border-color .2s;
-            width: 100%;
+            font-family: var(--mono); font-size: 12px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 7px; color: var(--text);
+            padding: 7px 10px; outline: none;
+            transition: border-color .2s; width: 100%;
         }
-
         input:focus, select:focus { border-color: var(--green); }
         input::placeholder { color: var(--text-dim); }
         select option { background: var(--surface2); }
 
-        /* ── BUTTONS ── */
         .btn {
-            font-family: var(--mono);
-            font-size: 12px;
-            font-weight: 600;
-            border: none;
-            border-radius: 7px;
-            padding: 8px 14px;
-            cursor: pointer;
-            transition: opacity .15s, transform .1s;
+            font-family: var(--mono); font-size: 12px; font-weight: 600;
+            border: none; border-radius: 7px; padding: 7px 13px;
+            cursor: pointer; transition: opacity .15s, transform .1s;
             white-space: nowrap;
         }
-
         .btn:hover  { opacity: .85; }
         .btn:active { transform: scale(.97); }
 
-        .btn-primary { background: var(--green); color: #000; }
-        .btn-save    { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-        .btn-save:hover { border-color: var(--green); color: var(--green); }
+        .btn-green { background: var(--green); color: #000; }
+        .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+        .btn-ghost:hover { border-color: var(--green); color: var(--green); }
+        .btn-red   { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); }
+        .btn-red:hover { background: var(--red); color: #000; }
 
-        /* ── TEST FORM ── */
         .test-form {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 14px;
-            margin-bottom: 14px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 9px; padding: 13px; margin-bottom: 12px;
         }
+        .form-col   { display: flex; flex-direction: column; gap: 7px; }
+        .form-foot  { display: flex; gap: 7px; margin-top: 9px; }
 
-        .form-row     { display: flex; flex-direction: column; gap: 8px; }
-        .form-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .otp { color: var(--yellow); font-weight: 700; font-family: var(--mono); background: var(--yellow-dim); border-radius: 3px; padding: 1px 4px; }
 
-        /* ── OTP ── */
-        .otp {
-            color: var(--yellow);
-            font-weight: 700;
-            font-family: var(--mono);
-            background: var(--yellow-dim);
-            border-radius: 4px;
-            padding: 1px 4px;
-        }
-
-        /* ── BADGE ── */
         .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-family: var(--mono);
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: .5px;
+            display: inline-flex; align-items: center; gap: 3px;
+            font-family: var(--mono); font-size: 10px; font-weight: 700;
+            padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .4px;
         }
-
         .badge-pass    { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
         .badge-fail    { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red); }
         .badge-pending { background: var(--surface2);  color: var(--text-dim); border: 1px solid var(--border); }
 
-        /* ── TIMEOUT BAR ── */
-        .timeout-bar  { margin-top: 8px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .timeout-bar  { margin-top: 7px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
         .timeout-fill { height: 100%; background: var(--yellow); border-radius: 2px; transition: width .5s linear; }
 
-        /* ── SMS ── */
-        .sms-message { font-family: var(--mono); font-size: 12px; color: var(--text); margin: 6px 0; line-height: 1.5; word-break: break-all; }
+        .sms-msg { font-family: var(--mono); font-size: 12px; color: var(--text); margin: 5px 0; line-height: 1.5; word-break: break-all; }
 
-        /* ── EMPTY ── */
-        .empty { text-align: center; padding: 32px 16px; color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
+        .empty { text-align: center; padding: 28px 14px; color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
 
-        /* ── SCROLLBAR ── */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        /* ══════════════════════════════════════
+           ADMIN PANEL
+        ══════════════════════════════════════ */
+        .admin-body { flex: 1; overflow-y: auto; padding: 28px 32px; }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+            max-width: 1100px;
+        }
+
+        .admin-section {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 22px;
+        }
+
+        .admin-section-title {
+            font-family: var(--mono); font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim);
+            margin-bottom: 18px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        /* User table */
+        .user-table { width: 100%; border-collapse: collapse; }
+        .user-table th {
+            font-family: var(--mono); font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim);
+            text-align: left; padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .user-table td {
+            font-family: var(--mono); font-size: 12px;
+            padding: 10px 10px; border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+        .user-table tr:last-child td { border-bottom: none; }
+        .user-table tr:hover td { background: var(--surface2); }
+
+        .status-dot {
+            display: inline-block; width: 7px; height: 7px;
+            border-radius: 50%; margin-right: 5px;
+        }
+        .status-dot.on  { background: var(--green); }
+        .status-dot.off { background: var(--red); }
+
+        .user-actions { display: flex; gap: 5px; }
+
+        /* Create user form */
+        .create-form { display: flex; flex-direction: column; gap: 10px; }
+        .create-form .field-label { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+
+        /* Change password form */
+        .change-pw-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+
+        /* ── modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 500;
+            background: #080c14c0;
+            backdrop-filter: blur(4px);
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 24px 20px;
+            width: 360px;
+            box-shadow: 0 32px 64px #00000060;
+            animation: fadeUp .25s ease;
+        }
+        .modal-title { font-family: var(--mono); font-weight: 700; font-size: 14px; margin-bottom: 16px; }
+        .modal-foot  { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 
         /* ── TOAST ── */
         #toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            border-radius: 8px;
-            padding: 10px 16px;
-            font-family: var(--mono);
-            font-size: 12px;
-            transform: translateY(70px);
-            opacity: 0;
-            transition: all .3s ease;
-            z-index: 2000;
-            pointer-events: none;
+            position: fixed; bottom: 22px; right: 22px;
+            border-radius: 8px; padding: 9px 15px;
+            font-family: var(--mono); font-size: 12px;
+            transform: translateY(60px); opacity: 0;
+            transition: all .3s ease; z-index: 2000; pointer-events: none;
         }
-
         #toast.show { transform: translateY(0); opacity: 1; }
         #toast.success { background: var(--surface); border: 1px solid var(--green); color: var(--green); }
         #toast.error   { background: var(--surface); border: 1px solid var(--red);   color: var(--red); }
         #toast.info    { background: var(--surface); border: 1px solid var(--blue);  color: var(--blue); }
 
-        /* ── LOCKOUT SCREEN ── */
-        #lockout-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 1500;
-            background: #080c14ee;
-            backdrop-filter: blur(6px);
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 16px;
-            font-family: var(--mono);
-        }
-
-        #lockout-overlay.show { display: flex; }
-
-        .lockout-icon { font-size: 48px; }
-
-        .lockout-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--red);
-        }
-
-        .lockout-timer {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: 2px;
-        }
-
-        .lockout-sub { font-size: 12px; color: var(--text-dim); }
+        /* ── scrollbar ── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <!-- ══════════════════════════════
-     LOGIN SCREEN
+     SCREEN: LOGIN
 ══════════════════════════════ -->
-<div id="login-screen">
-    <div class="login-box">
+<div id="screen-login" class="screen active">
+    <div class="login-card">
         <div class="login-logo">
             <div class="login-logo-icon">📩</div>
             <div>
-                <div class="login-logo-text">SMS_TESTER</div>
-                <div class="login-logo-sub">Dashboard · Accesso richiesto</div>
+                <div class="login-logo-name">SMS_TESTER</div>
+                <div class="login-logo-sub">Accesso richiesto</div>
             </div>
         </div>
 
-        <div class="login-label">API Key</div>
-        <div class="login-input-wrap">
-            <input
-                class="login-input"
-                id="apiKeyInput"
-                type="password"
-                placeholder="••••••••••••••••"
-                autocomplete="current-password"
-                onkeydown="if(event.key==='Enter') doLogin()"
-            >
-            <button class="toggle-pw" onclick="togglePw()" id="togglePwBtn" title="Mostra/nascondi">👁</button>
+        <div class="field-label">Username</div>
+        <div class="field-wrap">
+            <input class="field-input" id="loginUsername" type="text" placeholder="username" autocomplete="username"
+                   onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
         </div>
 
-        <button class="login-btn" onclick="doLogin()">ACCEDI →</button>
+        <div class="field-label">Password</div>
+        <div class="field-wrap">
+            <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password"
+                   onkeydown="if(event.key==='Enter') doLogin()">
+            <button class="eye-btn" onclick="togglePw('loginPassword',this)">👁</button>
+        </div>
+
+        <button class="login-btn" id="loginBtn" onclick="doLogin()">ACCEDI →</button>
 
         <div class="login-error" id="loginError"></div>
 
-        <div class="login-attempts" id="attemptDots">
+        <div class="attempt-row" id="attemptDots">
             <div class="attempt-dot" id="dot-0"></div>
             <div class="attempt-dot" id="dot-1"></div>
             <div class="attempt-dot" id="dot-2"></div>
         </div>
-
-        <div class="login-hint">Inserisci la API Key configurata nel server</div>
     </div>
 </div>
 
 <!-- ══════════════════════════════
-     LOCKOUT OVERLAY
+     SCREEN: DASHBOARD
 ══════════════════════════════ -->
-<div id="lockout-overlay">
-    <div class="lockout-icon">🔒</div>
-    <div class="lockout-title">Troppi tentativi falliti</div>
-    <div class="lockout-timer" id="lockoutTimer">02:00</div>
-    <div class="lockout-sub">Riprova tra qualche istante</div>
-</div>
-
-<!-- ══════════════════════════════
-     DASHBOARD
-══════════════════════════════ -->
-<div id="dashboard">
+<div id="screen-dashboard" class="screen">
 
     <header>
-        <div class="logo">
-            <div class="logo-icon">📩</div>
-            SMS_TESTER
+        <div class="hdr-left">
+            <div class="hdr-logo">
+                <div class="hdr-logo-icon">📩</div>
+                SMS_TESTER
+            </div>
+            <button class="nav-btn active-nav" onclick="showScreen('dashboard')">Dashboard</button>
+            <button class="nav-btn admin-nav" id="adminNavBtn" style="display:none" onclick="showScreen('admin')">⚙ Admin</button>
         </div>
-        <div class="header-right">
-            <div class="session-info">
-                🔑 KEY <span id="keyHint"></span>
-            </div>
-            <div class="status-pill">
-                <div class="pulse"></div>
-                LIVE
-            </div>
+        <div class="hdr-right">
+            <div class="session-chip">👤 <b id="hdrUsername"></b></div>
+            <div class="role-chip" id="hdrRole"></div>
+            <div class="pulse-pill"><div class="pulse"></div>LIVE</div>
             <button class="logout-btn" onclick="doLogout()">⏏ ESCI</button>
         </div>
     </header>
 
-    <div class="layout">
-
-        <!-- DEVICES -->
+    <div class="dash-body">
         <div class="panel">
             <div class="panel-title">📱 Devices Online</div>
             <div id="devices"></div>
         </div>
-
-        <!-- SMS -->
         <div class="panel">
             <div class="panel-title">📨 SMS Ricevuti</div>
             <div id="sms"></div>
         </div>
-
-        <!-- TESTS -->
         <div class="panel">
             <div class="panel-title">🧪 Test SMS</div>
             <div class="test-form">
-                <div class="form-row">
+                <div class="form-col">
                     <input id="expected" placeholder="Testo atteso (es: OTP)">
                     <select id="simSelect"></select>
                 </div>
-                <div class="form-actions">
-                    <button class="btn btn-primary" onclick="createTest()">▶ Crea Test</button>
+                <div class="form-foot">
+                    <button class="btn btn-green" onclick="createTest()">▶ Crea Test</button>
                 </div>
             </div>
             <div id="tests"></div>
         </div>
+    </div>
+</div>
 
+<!-- ══════════════════════════════
+     SCREEN: ADMIN
+══════════════════════════════ -->
+<div id="screen-admin" class="screen">
+
+    <header>
+        <div class="hdr-left">
+            <div class="hdr-logo">
+                <div class="hdr-logo-icon">📩</div>
+                SMS_TESTER
+            </div>
+            <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
+            <button class="nav-btn admin-nav active-nav" onclick="showScreen('admin')">⚙ Admin</button>
+        </div>
+        <div class="hdr-right">
+            <div class="session-chip">👤 <b id="hdrUsernameAdmin"></b></div>
+            <div class="role-chip admin">ADMIN</div>
+            <button class="logout-btn" onclick="doLogout()">⏏ ESCI</button>
+        </div>
+    </header>
+
+    <div class="admin-body">
+        <div class="admin-grid">
+
+            <!-- USERS TABLE -->
+            <div class="admin-section">
+                <div class="admin-section-title">
+                    👥 Utenti
+                    <button class="btn btn-green" style="font-size:11px;padding:5px 12px" onclick="openCreateModal()">+ Nuovo</button>
+                </div>
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Ruolo</th>
+                            <th>Stato</th>
+                            <th>Ultimo accesso</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- SIDEBAR -->
+            <div style="display:flex;flex-direction:column;gap:20px">
+
+                <!-- CHANGE PASSWORD -->
+                <div class="admin-section">
+                    <div class="admin-section-title">🔑 Cambia Password</div>
+                    <div class="change-pw-form">
+                        <div>
+                            <div class="field-label">Password attuale</div>
+                            <div class="field-wrap" style="margin-bottom:0">
+                                <input class="field-input" id="pwCurrent" type="password" placeholder="••••••••">
+                                <button class="eye-btn" onclick="togglePw('pwCurrent',this)">👁</button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="field-label">Nuova password</div>
+                            <div class="field-wrap" style="margin-bottom:0">
+                                <input class="field-input" id="pwNew" type="password" placeholder="min 8 caratteri">
+                                <button class="eye-btn" onclick="togglePw('pwNew',this)">👁</button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="field-label">Conferma</div>
+                            <div class="field-wrap" style="margin-bottom:0">
+                                <input class="field-input" id="pwConfirm" type="password" placeholder="••••••••">
+                                <button class="eye-btn" onclick="togglePw('pwConfirm',this)">👁</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-green" style="width:100%" onclick="changePassword()">Aggiorna Password</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CREA UTENTE -->
+<div class="modal-overlay" id="createModal">
+    <div class="modal">
+        <div class="modal-title">👤 Nuovo Utente</div>
+
+        <div class="field-label">Username</div>
+        <div class="field-wrap"><input class="field-input" id="newUsername" type="text" placeholder="username"></div>
+
+        <div class="field-label">Password</div>
+        <div class="field-wrap">
+            <input class="field-input" id="newPassword" type="password" placeholder="min 8 caratteri">
+            <button class="eye-btn" onclick="togglePw('newPassword',this)">👁</button>
+        </div>
+
+        <div class="field-label">Ruolo</div>
+        <div class="field-wrap">
+            <select class="field-input" id="newRole">
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+            </select>
+        </div>
+
+        <div class="modal-foot">
+            <button class="btn btn-ghost" onclick="closeCreateModal()">Annulla</button>
+            <button class="btn btn-green" onclick="createUser()">Crea</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: RESET PASSWORD -->
+<div class="modal-overlay" id="resetModal">
+    <div class="modal">
+        <div class="modal-title">🔑 Reset Password</div>
+        <div id="resetModalUsername" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:14px"></div>
+
+        <div class="field-label">Nuova password</div>
+        <div class="field-wrap">
+            <input class="field-input" id="resetPassword" type="password" placeholder="min 8 caratteri">
+            <button class="eye-btn" onclick="togglePw('resetPassword',this)">👁</button>
+        </div>
+
+        <div class="modal-foot">
+            <button class="btn btn-ghost" onclick="closeResetModal()">Annulla</button>
+            <button class="btn btn-red"   onclick="confirmReset()">Reimposta</button>
+        </div>
     </div>
 </div>
 
@@ -677,316 +672,311 @@
 const API = "https://sms-backend-jp2t.onrender.com";
 
 // ══════════════════════════════════════
-// AUTH STATE
+// STATE
 // ══════════════════════════════════════
-const AUTH = {
-    MAX_ATTEMPTS:  3,
-    LOCKOUT_MS:    2 * 60 * 1000,  // 2 minuti
-    SESSION_KEY:   "sms_dash_token",
-    LOCKOUT_KEY:   "sms_dash_lockout",
-    ATTEMPTS_KEY:  "sms_dash_attempts",
+const S = {
+    token:     null,
+    user:      null,
+    simsCache: [],
+    editingKey: null,
+    polls:     [],
 
-    attempts: 0,
-    token: null,
-
-    init() {
-        // ripristina tentativi dal sessionStorage (solo per tab corrente)
-        this.attempts = parseInt(sessionStorage.getItem(this.ATTEMPTS_KEY) || "0");
-
-        // check lockout attivo
-        const lockoutUntil = parseInt(localStorage.getItem(this.LOCKOUT_KEY) || "0");
-        if (Date.now() < lockoutUntil) {
-            startLockoutTimer(lockoutUntil - Date.now());
-            return false;
-        }
-
-        // ripristina sessione
-        const saved = sessionStorage.getItem(this.SESSION_KEY);
-        if (saved) {
-            this.token = saved;
-            return true;
-        }
-
-        return false;
-    },
-
-    saveSession(token) {
-        this.token = token;
-        sessionStorage.setItem(this.SESSION_KEY, token);
-        sessionStorage.setItem(this.ATTEMPTS_KEY, "0");
-        this.attempts = 0;
-    },
-
-    failAttempt() {
-        this.attempts++;
-        sessionStorage.setItem(this.ATTEMPTS_KEY, String(this.attempts));
-
-        // aggiorna dot
-        for (let i = 0; i < 3; i++) {
-            const dot = document.getElementById(`dot-${i}`);
-            if (dot) dot.classList.toggle("used", i < this.attempts);
-        }
-
-        if (this.attempts >= this.MAX_ATTEMPTS) {
-            const until = Date.now() + this.LOCKOUT_MS;
-            localStorage.setItem(this.LOCKOUT_KEY, String(until));
-            startLockoutTimer(this.LOCKOUT_MS);
-        }
-    },
-
-    clearSession() {
-        this.token = null;
-        sessionStorage.removeItem(this.SESSION_KEY);
-    },
-
-    getHeaders() {
-        return {
-            "Content-Type": "application/json",
-            "X-API-Key": this.token || ""
-        };
-    }
+    // Lockout / attempts (per-tab)
+    attempts:  0,
+    MAX_ATT:   3,
+    LOCK_MS:   2 * 60 * 1000,
+    LOCK_KEY:  "sms_lockout_until",
+    SESS_KEY:  "sms_token"
 };
-
-// ══════════════════════════════════════
-// LOCKOUT TIMER
-// ══════════════════════════════════════
-let lockoutInterval = null;
-
-function startLockoutTimer(ms) {
-    document.getElementById("lockout-overlay").classList.add("show");
-    document.getElementById("login-screen").classList.add("hidden");
-
-    let remaining = Math.ceil(ms / 1000);
-
-    function tick() {
-        const m = String(Math.floor(remaining / 60)).padStart(2, "0");
-        const s = String(remaining % 60).padStart(2, "0");
-        document.getElementById("lockoutTimer").textContent = `${m}:${s}`;
-
-        if (remaining <= 0) {
-            clearInterval(lockoutInterval);
-            document.getElementById("lockout-overlay").classList.remove("show");
-            document.getElementById("login-screen").classList.remove("hidden");
-            AUTH.attempts = 0;
-            sessionStorage.setItem(AUTH.ATTEMPTS_KEY, "0");
-            for (let i = 0; i < 3; i++) {
-                document.getElementById(`dot-${i}`)?.classList.remove("used");
-            }
-            localStorage.removeItem(AUTH.LOCKOUT_KEY);
-        }
-        remaining--;
-    }
-
-    tick();
-    lockoutInterval = setInterval(tick, 1000);
-}
-
-// ══════════════════════════════════════
-// LOGIN / LOGOUT
-// ══════════════════════════════════════
-function togglePw() {
-    const input = document.getElementById("apiKeyInput");
-    const btn   = document.getElementById("togglePwBtn");
-    if (input.type === "password") {
-        input.type = "text";
-        btn.textContent = "🙈";
-    } else {
-        input.type = "password";
-        btn.textContent = "👁";
-    }
-}
-
-async function doLogin() {
-    const key = document.getElementById("apiKeyInput").value.trim();
-    const errEl = document.getElementById("loginError");
-
-    if (!key) {
-        showLoginError("Inserisci la API Key");
-        return;
-    }
-
-    // Verifica la chiave chiamando un endpoint protetto
-    try {
-        const res = await fetch(API + "/auth/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-API-Key": key }
-        });
-
-        if (res.ok) {
-            AUTH.saveSession(key);
-            enterDashboard(key);
-        } else if (res.status === 401) {
-            AUTH.failAttempt();
-
-            const left = AUTH.MAX_ATTEMPTS - AUTH.attempts;
-            if (left > 0) {
-                showLoginError(`API Key errata. Tentativi rimanenti: ${left}`);
-            }
-        } else {
-            showLoginError("Errore server. Riprova.");
-        }
-    } catch (e) {
-        showLoginError("Impossibile contattare il server");
-    }
-}
-
-function showLoginError(msg) {
-    const el = document.getElementById("loginError");
-    el.textContent = msg;
-    el.classList.add("show");
-    el.style.animation = "none";
-    requestAnimationFrame(() => { el.style.animation = ""; });
-    setTimeout(() => el.classList.remove("show"), 4000);
-}
-
-function enterDashboard(key) {
-    // hint chiave: mostra solo ultimi 4 caratteri
-    document.getElementById("keyHint").textContent =
-        "···" + key.slice(-4).toUpperCase();
-
-    document.getElementById("login-screen").classList.add("hidden");
-    document.getElementById("dashboard").classList.add("visible");
-
-    init();
-}
-
-function doLogout() {
-    AUTH.clearSession();
-    stopPolling();
-    document.getElementById("dashboard").classList.remove("visible");
-    document.getElementById("login-screen").classList.remove("hidden");
-    document.getElementById("apiKeyInput").value = "";
-    showToast("Sessione terminata", "info");
-}
-
-// ══════════════════════════════════════
-// FETCH HELPER (con auth header)
-// ══════════════════════════════════════
-async function apiFetch(path, options = {}) {
-    try {
-        const res = await fetch(API + path, {
-            ...options,
-            headers: {
-                ...AUTH.getHeaders(),
-                ...(options.headers || {})
-            }
-        });
-
-        if (res.status === 401) {
-            showToast("Sessione scaduta — effettua il login", "error");
-            doLogout();
-            return null;
-        }
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
-
-    } catch (e) {
-        console.error(`[apiFetch] ${path}:`, e.message);
-        return null;
-    }
-}
-
-// ══════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════
-let toastTimeout;
-function showToast(msg, type = "success") {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.className = `show ${type}`;
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { t.className = ""; }, 2800);
-}
-
-// ══════════════════════════════════════
-// APP STATE
-// ══════════════════════════════════════
-let simsCache  = [];
-let editingKey = null;
-let pollIntervals = [];
-
-function stopPolling() {
-    pollIntervals.forEach(clearInterval);
-    pollIntervals = [];
-}
 
 // ══════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════
-function escapeHtml(str) {
-    return String(str ?? "")
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const esc  = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const escA = s => String(s ?? "").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+function fmt(ts) {
+    if (!ts) return "—";
+    return new Date(ts).toLocaleString("it-IT", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
 }
 
-function escapeAttr(str) {
-    return String(str ?? "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+function fmtTime(ts) {
+    return new Date(ts).toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
 }
 
 function highlightOTP(text) {
     return String(text).replace(/\b\d{4,8}\b/g, m => `<span class="otp">${m}</span>`);
 }
 
-function formatTime(ts) {
-    return new Date(ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-}
-
 function getSimLabel(deviceId, simId) {
-    const sim = simsCache.find(s => s.deviceId === deviceId && s.simId === simId);
+    const sim = S.simsCache.find(s => s.deviceId === deviceId && s.simId === simId);
     if (!sim)                  return simId;
     if (sim.label?.trim())     return sim.label;
     if (sim.candidate?.trim()) return "⚠ " + sim.candidate;
     return "⚠ da configurare";
 }
 
+function togglePw(inputId, btn) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.type = el.type === "password" ? "text" : "password";
+    btn.textContent = el.type === "password" ? "👁" : "🙈";
+}
+
 // ══════════════════════════════════════
-// DEVICES
+// TOAST
 // ══════════════════════════════════════
+let _toastT;
+function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(_toastT);
+    _toastT = setTimeout(() => { t.className = ""; }, 2800);
+}
+
+// ══════════════════════════════════════
+// FETCH HELPER
+// ══════════════════════════════════════
+async function api(path, opts = {}) {
+    try {
+        const res = await fetch(API + path, {
+            ...opts,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${S.token}`,
+                ...(opts.headers || {})
+            }
+        });
+
+        if (res.status === 401) {
+            showToast("Sessione scaduta", "error");
+            doLogout();
+            return null;
+        }
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        return await res.json();
+    } catch (e) {
+        console.error(`[api] ${path}:`, e.message);
+        return null;
+    }
+}
+
+// ══════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════
+function showScreen(name) {
+    ["login","dashboard","admin"].forEach(id => {
+        const el = document.getElementById(`screen-${id}`);
+        el.classList.remove("active");
+    });
+    document.getElementById(`screen-${name}`).classList.add("active");
+}
+
+// ══════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════
+function checkLockout() {
+    const until = parseInt(localStorage.getItem(S.LOCK_KEY) || "0");
+    if (Date.now() < until) {
+        lockUntil(until);
+        return true;
+    }
+    return false;
+}
+
+function lockUntil(until) {
+    const btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+
+    const tick = () => {
+        const rem = Math.max(0, until - Date.now());
+        const m = String(Math.floor(rem / 60000)).padStart(2,"0");
+        const s = String(Math.floor((rem % 60000) / 1000)).padStart(2,"0");
+        btn.textContent = `BLOCCATO — ${m}:${s}`;
+
+        if (rem <= 0) {
+            btn.disabled = false;
+            btn.textContent = "ACCEDI →";
+            S.attempts = 0;
+            for (let i = 0; i < 3; i++) document.getElementById(`dot-${i}`)?.classList.remove("used");
+            localStorage.removeItem(S.LOCK_KEY);
+        }
+    };
+
+    tick();
+    const iv = setInterval(() => {
+        if (parseInt(localStorage.getItem(S.LOCK_KEY) || "0") <= Date.now()) clearInterval(iv);
+        tick();
+    }, 1000);
+}
+
+function loginError(msg) {
+    const el = document.getElementById("loginError");
+    el.textContent = msg;
+    el.classList.remove("show");
+    requestAnimationFrame(() => el.classList.add("show"));
+    setTimeout(() => el.classList.remove("show"), 4000);
+}
+
+async function doLogin() {
+    if (checkLockout()) return;
+
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    if (!username || !password) { loginError("Inserisci username e password"); return; }
+
+    const btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+    btn.textContent = "...";
+
+    try {
+        const res = await fetch(API + "/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            S.attempts++;
+            for (let i = 0; i < 3; i++) {
+                document.getElementById(`dot-${i}`)?.classList.toggle("used", i < S.attempts);
+            }
+
+            if (S.attempts >= S.MAX_ATT) {
+                const until = Date.now() + S.LOCK_MS;
+                localStorage.setItem(S.LOCK_KEY, String(until));
+                lockUntil(until);
+            } else {
+                btn.disabled = false;
+                btn.textContent = "ACCEDI →";
+            }
+
+            loginError(data.error || "Credenziali non valide");
+            return;
+        }
+
+        // SUCCESS
+        S.token    = data.token;
+        S.user     = data.user;
+        S.attempts = 0;
+        sessionStorage.setItem(S.SESS_KEY, data.token);
+        localStorage.removeItem(S.LOCK_KEY);
+
+        enterApp();
+
+    } catch {
+        loginError("Impossibile contattare il server");
+        btn.disabled = false;
+        btn.textContent = "ACCEDI →";
+    }
+}
+
+function enterApp() {
+    document.getElementById("hdrUsername").textContent      = S.user.username;
+    document.getElementById("hdrUsernameAdmin").textContent = S.user.username;
+
+    const roleEl = document.getElementById("hdrRole");
+    roleEl.textContent = S.user.role.toUpperCase();
+    roleEl.className   = `role-chip ${S.user.role}`;
+
+    if (S.user.role === "admin") {
+        document.getElementById("adminNavBtn").style.display = "";
+    }
+
+    showScreen("dashboard");
+    initDashboard();
+}
+
+function doLogout() {
+    api("/auth/logout", { method: "POST" });
+    S.token = null; S.user = null;
+    sessionStorage.removeItem(S.SESS_KEY);
+    stopPolling();
+    showScreen("login");
+    document.getElementById("loginPassword").value = "";
+    document.getElementById("loginBtn").disabled   = false;
+    document.getElementById("loginBtn").textContent = "ACCEDI →";
+    document.getElementById("loginError").classList.remove("show");
+}
+
+// ══════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════
+async function initDashboard() {
+    await loadSimsCache();
+    await loadDevices();
+    await loadSimSelect();
+    await loadSMS();
+    await loadTests();
+    startPolling();
+}
+
+function startPolling() {
+    S.polls.push(setInterval(async () => {
+        await loadSMS();
+        await loadTests();
+        await loadSimsCache();
+        await loadSimSelect();
+    }, 2000));
+
+    S.polls.push(setInterval(async () => {
+        if (S.editingKey) return;
+        await loadDevices();
+    }, 8000));
+}
+
+function stopPolling() {
+    S.polls.forEach(clearInterval);
+    S.polls = [];
+}
+
+// ── DEVICES
 async function loadDevices() {
-    const data = await apiFetch("/devices-online");
+    const data = await api("/devices-online");
     if (!data) return;
 
     const container = document.getElementById("devices");
 
-    if (data.length === 0) {
-        container.innerHTML = `<div class="empty">Nessun device online</div>`;
-        return;
-    }
+    if (!data.length) { container.innerHTML = `<div class="empty">Nessun device online</div>`; return; }
 
     let html = "";
     data.forEach(d => {
         let simsHtml = "";
         (d.sims || []).forEach(sim => {
-            const key = `${d.deviceId}__${sim.simId}`;
-            const isEditing = editingKey === key;
-            const cached = simsCache.find(s => s.deviceId === d.deviceId && s.simId === sim.simId);
-            const value = isEditing
+            const key    = `${d.deviceId}__${sim.simId}`;
+            const editing = S.editingKey === key;
+            const cached  = S.simsCache.find(s => s.deviceId === d.deviceId && s.simId === sim.simId);
+            const value   = editing
                 ? (document.getElementById(`input-${key}`)?.value ?? "")
                 : (cached?.label || cached?.candidate || "");
 
             simsHtml += `
                 <div class="sim-block">
-                    <div class="sim-id">${escapeHtml(sim.simId)}</div>
+                    <div class="sim-id">${esc(sim.simId)}</div>
                     <div class="sim-row">
-                        <input
-                            id="input-${key}"
-                            placeholder="Numero SIM..."
-                            value="${escapeAttr(value)}"
-                            onfocus="editingKey='${key}'"
-                            onblur="editingKey=null"
-                            onkeydown="if(event.key==='Enter') manualSave('${escapeAttr(d.deviceId)}','${escapeAttr(sim.simId)}','${key}')"
-                        >
-                        <button class="btn btn-save" onclick="manualSave('${escapeAttr(d.deviceId)}','${escapeAttr(sim.simId)}','${key}')">💾</button>
+                        <input id="input-${key}" placeholder="Numero SIM..." value="${escA(value)}"
+                               onfocus="S.editingKey='${key}'" onblur="S.editingKey=null"
+                               onkeydown="if(event.key==='Enter') saveSim('${escA(d.deviceId)}','${escA(sim.simId)}','${key}')">
+                        <button class="btn btn-ghost" onclick="saveSim('${escA(d.deviceId)}','${escA(sim.simId)}','${key}')">💾</button>
                     </div>
                 </div>`;
         });
 
-        if (!d.sims?.length) simsHtml = `<div class="card-sub" style="margin-top:8px">Nessuna SIM rilevata</div>`;
+        if (!d.sims?.length) simsHtml = `<div class="card-sub" style="margin-top:8px">Nessuna SIM</div>`;
 
         html += `
             <div class="card device">
-                <div class="card-title">📱 ${escapeHtml(d.deviceId)}</div>
-                <div class="card-sub">${escapeHtml(d.model || "unknown")}</div>
+                <div class="card-title">📱 ${esc(d.deviceId)}</div>
+                <div class="card-sub">${esc(d.model || "unknown")}</div>
                 ${simsHtml}
             </div>`;
     });
@@ -994,101 +984,85 @@ async function loadDevices() {
     container.innerHTML = html;
 }
 
-async function manualSave(deviceId, simId, key) {
+async function saveSim(deviceId, simId, key) {
     const input = document.getElementById(`input-${key}`);
     if (!input) return;
 
-    const res = await apiFetch("/set-sim-label", {
+    const res = await api("/set-sim-label", {
         method: "POST",
         body: JSON.stringify({ deviceId, simId, label: input.value.trim() })
     });
 
     if (res) {
         showToast("✅ Numero salvato");
-        editingKey = null;
+        S.editingKey = null;
         await loadSimsCache();
         await loadDevices();
         await loadSimSelect();
     }
 }
 
-// ══════════════════════════════════════
-// SMS
-// ══════════════════════════════════════
+// ── SMS
 async function loadSMS() {
-    const data = await apiFetch("/sms");
+    const data = await api("/sms");
     if (!data) return;
 
-    const container = document.getElementById("sms");
+    const c = document.getElementById("sms");
+    if (!data.length) { c.innerHTML = `<div class="empty">Nessun SMS ricevuto</div>`; return; }
 
-    if (data.length === 0) {
-        container.innerHTML = `<div class="empty">Nessun SMS ricevuto</div>`;
-        return;
-    }
-
-    container.innerHTML = data.slice().reverse().map(sms => `
+    c.innerHTML = data.slice().reverse().map(sms => `
         <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)">${escapeHtml(sms.sender)}</span>
-                <span class="card-sub">${formatTime(sms.timestamp)}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)">${esc(sms.sender)}</span>
+                <span class="card-sub">${fmtTime(sms.timestamp)}</span>
             </div>
-            <div class="sms-message">${highlightOTP(escapeHtml(sms.message))}</div>
-            <div class="card-sub" style="margin-top:4px">SIM: ${escapeHtml(getSimLabel(sms.deviceId, sms.simId))}</div>
-        </div>
-    `).join("");
+            <div class="sms-msg">${highlightOTP(esc(sms.message))}</div>
+            <div class="card-sub" style="margin-top:4px">SIM: ${esc(getSimLabel(sms.deviceId, sms.simId))}</div>
+        </div>`).join("");
 }
 
-// ══════════════════════════════════════
-// SIMS
-// ══════════════════════════════════════
+// ── SIMS
 async function loadSimsCache() {
-    const data = await apiFetch("/sims");
-    if (data) simsCache = data;
+    const data = await api("/sims");
+    if (data) S.simsCache = data;
 }
 
 async function loadSimSelect() {
-    const select = document.getElementById("simSelect");
-    const currentVal = select.value;
-    select.innerHTML = "";
+    const sel = document.getElementById("simSelect");
+    const cur = sel.value;
+    sel.innerHTML = "";
 
-    simsCache.forEach(sim => {
+    S.simsCache.forEach(sim => {
         const opt = document.createElement("option");
         opt.value = JSON.stringify({ deviceId: sim.deviceId, simId: sim.simId });
         let label = sim.label?.trim() || sim.candidate?.trim() || sim.simId;
         if (!sim.label?.trim() && sim.candidate?.trim()) label = "⚠ " + label;
         opt.textContent = `${label}  (${sim.deviceId})`;
-        select.appendChild(opt);
+        sel.appendChild(opt);
     });
 
-    if (currentVal) {
-        const found = [...select.options].find(o => o.value === currentVal);
-        if (found) select.value = currentVal;
-    }
-
-    if (!select.options.length) {
-        const placeholder = document.createElement("option");
-        placeholder.disabled = placeholder.selected = true;
-        placeholder.textContent = "Nessuna SIM disponibile";
-        select.appendChild(placeholder);
+    if (cur) { const f = [...sel.options].find(o => o.value === cur); if (f) sel.value = cur; }
+    if (!sel.options.length) {
+        const p = document.createElement("option");
+        p.disabled = p.selected = true; p.textContent = "Nessuna SIM";
+        sel.appendChild(p);
     }
 }
 
-// ══════════════════════════════════════
-// TESTS
-// ══════════════════════════════════════
+// ── TESTS
 async function createTest() {
     const expected = document.getElementById("expected").value.trim();
     const simVal   = document.getElementById("simSelect").value;
 
     if (!expected) { showToast("⚠ Inserisci testo atteso", "error"); return; }
-    if (!simVal)   { showToast("⚠ Seleziona una SIM", "error"); return; }
+    if (!simVal)   { showToast("⚠ Seleziona SIM", "error"); return; }
 
-    let selected;
-    try { selected = JSON.parse(simVal); } catch { showToast("⚠ SIM non valida", "error"); return; }
+    let sel;
+    try { sel = JSON.parse(simVal); } catch { showToast("⚠ SIM non valida", "error"); return; }
 
-    const res = await apiFetch("/test", {
+    const res = await api("/test", {
         method: "POST",
-        body: JSON.stringify({ expected, deviceId: selected.deviceId, simId: selected.simId })
+        body: JSON.stringify({ expected, deviceId: sel.deviceId, simId: sel.simId })
     });
 
     if (res) {
@@ -1099,80 +1073,220 @@ async function createTest() {
 }
 
 async function loadTests() {
-    const data = await apiFetch("/tests");
+    const data = await api("/tests");
     if (!data) return;
 
-    const container = document.getElementById("tests");
+    const c = document.getElementById("tests");
     const now = Date.now();
 
-    if (data.length === 0) {
-        container.innerHTML = `<div class="empty">Nessun test ancora</div>`;
-        return;
-    }
+    if (!data.length) { c.innerHTML = `<div class="empty">Nessun test</div>`; return; }
 
-    container.innerHTML = data.slice().reverse().map(test => {
-        let badgeHtml, cls;
-        if      (test.status === "PASS") { cls = "pass";    badgeHtml = `<span class="badge badge-pass">✓ PASS</span>`; }
-        else if (test.status === "FAIL") { cls = "fail";    badgeHtml = `<span class="badge badge-fail">✕ FAIL</span>`; }
-        else                             { cls = "pending"; badgeHtml = `<span class="badge badge-pending">⏳ PENDING</span>`; }
+    c.innerHTML = data.slice().reverse().map(test => {
+        let cls, badge;
+        if      (test.status === "PASS") { cls = "pass";    badge = `<span class="badge badge-pass">✓ PASS</span>`; }
+        else if (test.status === "FAIL") { cls = "fail";    badge = `<span class="badge badge-fail">✕ FAIL</span>`; }
+        else                             { cls = "pending"; badge = `<span class="badge badge-pending">⏳</span>`; }
 
-        let timeoutBar = "";
+        let bar = "";
         if (test.status === "PENDING" && test.timeout) {
             const pct = Math.max(0, 100 - ((now - test.createdAt) / test.timeout) * 100);
-            timeoutBar = `<div class="timeout-bar"><div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div></div>`;
+            bar = `<div class="timeout-bar"><div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div></div>`;
         }
 
         return `
             <div class="card ${cls}">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                    <span style="font-family:var(--mono);font-size:13px;font-weight:600">${escapeHtml(test.expected)}</span>
-                    ${badgeHtml}
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                    <span style="font-family:var(--mono);font-size:12px;font-weight:600">${esc(test.expected)}</span>
+                    ${badge}
                 </div>
-                <div class="card-sub">📱 ${escapeHtml(test.deviceId)} · SIM ${escapeHtml(test.simId)}</div>
-                <div class="card-sub">Creato: ${formatTime(test.createdAt)}</div>
-                ${test.completedAt ? `<div class="card-sub">Completato: ${formatTime(test.completedAt)}</div>` : ""}
-                ${timeoutBar}
+                <div class="card-sub">📱 ${esc(test.deviceId)} · ${esc(test.simId)}</div>
+                <div class="card-sub">${fmtTime(test.createdAt)} · by ${esc(test.createdBy || "—")}</div>
+                ${test.completedAt ? `<div class="card-sub">✓ ${fmtTime(test.completedAt)}</div>` : ""}
+                ${bar}
             </div>`;
     }).join("");
 }
 
 // ══════════════════════════════════════
-// POLLING
+// ADMIN PANEL
 // ══════════════════════════════════════
-function startPolling() {
-    pollIntervals.push(
-        setInterval(async () => {
-            await loadSMS();
-            await loadTests();
-            await loadSimsCache();
-            await loadSimSelect();
-        }, 2000)
-    );
+async function loadUsers() {
+    const data = await api("/admin/users");
+    if (!data) return;
 
-    pollIntervals.push(
-        setInterval(async () => {
-            if (editingKey) return;
-            await loadDevices();
-        }, 8000)
-    );
+    const tbody = document.getElementById("userTableBody");
+
+    tbody.innerHTML = data.map(u => `
+        <tr>
+            <td style="font-weight:600">${esc(u.username)}</td>
+            <td>
+                <span class="role-chip ${u.role}" style="font-size:9px">${u.role.toUpperCase()}</span>
+            </td>
+            <td>
+                <span class="status-dot ${u.active ? 'on' : 'off'}"></span>
+                ${u.active ? "Attivo" : "Disabilitato"}
+            </td>
+            <td style="color:var(--text-dim)">${fmt(u.lastLogin)}</td>
+            <td>
+                ${u.id !== S.user.id ? `
+                <div class="user-actions">
+                    <button class="btn btn-ghost" style="font-size:10px;padding:4px 9px"
+                            onclick="resetModal('${u.id}','${escA(u.username)}')">🔑</button>
+                    <button class="btn btn-ghost" style="font-size:10px;padding:4px 9px"
+                            onclick="toggleUser('${u.id}',${!u.active})"
+                            title="${u.active ? 'Disabilita' : 'Abilita'}">
+                        ${u.active ? "🚫" : "✅"}
+                    </button>
+                    <button class="btn btn-red" style="font-size:10px;padding:4px 9px"
+                            onclick="deleteUser('${u.id}','${escA(u.username)}')">🗑</button>
+                </div>` : `<span class="card-sub">tu</span>`}
+            </td>
+        </tr>`).join("");
+}
+
+// ── SWITCH TO ADMIN SCREEN
+const _origShowScreen = showScreen;
+async function showScreen(name) {
+    ["login","dashboard","admin"].forEach(id => {
+        document.getElementById(`screen-${id}`).classList.remove("active");
+    });
+    document.getElementById(`screen-${name}`).classList.add("active");
+
+    if (name === "admin") await loadUsers();
+}
+
+// ── CREATE USER
+function openCreateModal() {
+    document.getElementById("newUsername").value = "";
+    document.getElementById("newPassword").value = "";
+    document.getElementById("newRole").value = "user";
+    document.getElementById("createModal").classList.add("open");
+}
+
+function closeCreateModal() {
+    document.getElementById("createModal").classList.remove("open");
+}
+
+async function createUser() {
+    const username = document.getElementById("newUsername").value.trim();
+    const password = document.getElementById("newPassword").value;
+    const role     = document.getElementById("newRole").value;
+
+    if (!username || !password) { showToast("Campi obbligatori", "error"); return; }
+
+    const res = await api("/admin/users", {
+        method: "POST",
+        body: JSON.stringify({ username, password, role })
+    });
+
+    if (res) {
+        closeCreateModal();
+        showToast(`✅ Utente "${username}" creato`);
+        await loadUsers();
+    } else {
+        showToast("Errore nella creazione", "error");
+    }
+}
+
+// ── TOGGLE USER
+async function toggleUser(id, active) {
+    const res = await api(`/admin/users/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active })
+    });
+    if (res) {
+        showToast(active ? "✅ Utente abilitato" : "🚫 Utente disabilitato");
+        await loadUsers();
+    }
+}
+
+// ── RESET PASSWORD
+let _resetTargetId = null;
+
+function resetModal(userId, username) {
+    _resetTargetId = userId;
+    document.getElementById("resetModalUsername").textContent = `Utente: ${username}`;
+    document.getElementById("resetPassword").value = "";
+    document.getElementById("resetModal").classList.add("open");
+}
+
+function closeResetModal() {
+    document.getElementById("resetModal").classList.remove("open");
+    _resetTargetId = null;
+}
+
+async function confirmReset() {
+    const password = document.getElementById("resetPassword").value;
+    if (!password) { showToast("Inserisci la nuova password", "error"); return; }
+
+    const res = await api(`/admin/users/${_resetTargetId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ password })
+    });
+
+    if (res) {
+        closeResetModal();
+        showToast("🔑 Password reimpostata");
+    }
+}
+
+// ── DELETE USER
+async function deleteUser(id, username) {
+    if (!confirm(`Eliminare l'utente "${username}"? Questa azione è irreversibile.`)) return;
+
+    const res = await api(`/admin/users/${id}`, { method: "DELETE" });
+    if (res) {
+        showToast(`🗑 Utente "${username}" eliminato`);
+        await loadUsers();
+    }
+}
+
+// ── CHANGE OWN PASSWORD
+async function changePassword() {
+    const current = document.getElementById("pwCurrent").value;
+    const next    = document.getElementById("pwNew").value;
+    const confirm = document.getElementById("pwConfirm").value;
+
+    if (!current || !next) { showToast("Campi obbligatori", "error"); return; }
+    if (next !== confirm)  { showToast("Le password non coincidono", "error"); return; }
+    if (next.length < 8)   { showToast("Minimo 8 caratteri", "error"); return; }
+
+    const res = await api("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: current, newPassword: next })
+    });
+
+    if (res) {
+        document.getElementById("pwCurrent").value = "";
+        document.getElementById("pwNew").value     = "";
+        document.getElementById("pwConfirm").value = "";
+        showToast("✅ Password aggiornata — effettua nuovamente il login");
+        setTimeout(doLogout, 2000);
+    }
 }
 
 // ══════════════════════════════════════
-// INIT
+// RESTORE SESSION
 // ══════════════════════════════════════
-async function init() {
-    await loadSimsCache();
-    await loadDevices();
-    await loadSimSelect();
-    await loadSMS();
-    await loadTests();
-    startPolling();
+async function tryRestoreSession() {
+    if (checkLockout()) return;
+
+    const saved = sessionStorage.getItem(S.SESS_KEY);
+    if (!saved) return;
+
+    S.token = saved;
+    const me = await api("/auth/me");
+
+    if (me) {
+        S.user = me;
+        enterApp();
+    } else {
+        S.token = null;
+        sessionStorage.removeItem(S.SESS_KEY);
+    }
 }
 
-// ── Avvio: controlla se esiste già una sessione
-if (AUTH.init()) {
-    enterDashboard(AUTH.token);
-}
+tryRestoreSession();
 </script>
 </body>
 </html>
