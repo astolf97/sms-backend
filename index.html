@@ -1674,22 +1674,26 @@ async function loadTests() {
             bar = `<div class="timeout-bar"><div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div></div>`;
         }
 
-        const simLabel = getSimLabel(test.deviceId, test.simId);
         const isAdmin  = S.user?.role === "admin";
+        // Trova il numero di telefono della SIM associata al test
+        const simData  = S.simsCache.find(s => s.deviceId === test.deviceId && s.simId === test.simId);
+        const phoneNum = simData?.label?.trim() || simData?.candidate?.trim() || test.simId;
+        const simFlag  = getCountryFlag(phoneNum);
 
         return `
             <div class="card ${cls}">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-                    <span style="font-family:var(--mono);font-size:12px;font-weight:600">${esc(test.expected)}</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${esc(test.expected)}</span>
                     ${badge}
                 </div>
-                <div class="card-sub" style="margin-top:4px">
-                    📞 <b style="color:var(--text)">${esc(simLabel)}</b>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px">
+                    <span style="font-size:18px">${simFlag || "📱"}</span>
+                    <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green)">${esc(phoneNum)}</span>
                 </div>
-                ${isAdmin ? `<div class="card-sub">📱 ${esc(test.deviceId)} · ${esc(test.simId)}</div>` : ""}
-                <div class="card-sub">${fmtTime(test.createdAt)} · by ${esc(test.createdBy || "—")}</div>
-                ${test.completedAt ? `<div class="card-sub" style="color:var(--green)">✓ ${fmtTime(test.completedAt)}</div>` : ""}
-                ${test.result ? `<div class="sms-msg" style="margin-top:6px;font-size:11px">${highlightOTP(esc(test.result))}</div>` : ""}
+                ${isAdmin ? `<div class="card-sub" style="margin-bottom:4px">📱 ${esc(test.deviceId)} · ${esc(test.simId)}</div>` : ""}
+                <div class="card-sub">${fmtTime(test.createdAt)}${test.createdBy ? ` · ${esc(test.createdBy)}` : ""}</div>
+                ${test.completedAt ? `<div class="card-sub" style="color:var(--green);margin-top:3px">✓ consegnato ${fmtTime(test.completedAt)}</div>` : ""}
+                ${test.result ? `<div class="sms-msg" style="margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px;font-size:11px">${highlightOTP(esc(test.result))}</div>` : ""}
                 ${bar}
             </div>`;
     }).join("");

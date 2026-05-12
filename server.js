@@ -532,18 +532,34 @@ app.post("/test", requireAuth, async (req, res) => {
 
         // Se l'utente passa un numero di telefono, troviamo device+sim automaticamente
         if (phoneNumber && !deviceId) {
-            const norm = phoneNumber.replace(/\s+/g, "").trim();
+            const norm    = phoneNumber.replace(/\s/g, "").trim();
             const allSims = await q("SELECT * FROM sims");
-            const match = allSims.find(s => {
-                const num = (s.label || s.candidate || "").replace(/\s+/g, "");
+
+            // Cerca corrispondenza esatta per numero
+            let match = allSims.find(s => {
+                const num = (s.label || s.candidate || "").replace(/\s/g, "");
                 if (!num) return false;
-                const a = num.replace(/\D/g, "").slice(-9);
-                const b = norm.replace(/\D/g, "").slice(-9);
+                const a = num.replace(/[^0-9]/g, "").slice(-9);
+                const b = norm.replace(/[^0-9]/g, "").slice(-9);
                 return a === b && a.length >= 6;
             });
-            if (!match) return res.status(404).json({ error: `Nessuna SIM trovata per il numero ${phoneNumber}` });
+
+            // Se non trova corrispondenza esatta, cerca per prefisso paese e assegna random
+            if (!match && norm.startsWith("+")) {
+                const simsByCountry = allSims.filter(s => {
+                    const num = (s.label || s.candidate || "").replace(/\s/g, "");
+                    return num && num.replace(/[^0-9]/g, "").startsWith(norm.slice(1, 4));
+                });
+                if (simsByCountry.length > 0) {
+                    match = simsByCountry[Math.floor(Math.random() * simsByCountry.length)];
+                    console.log(`🎲 SIM random assegnata: ${match.sim_id} su ${match.device_id}`);
+                }
+            }
+
+            if (!match) return res.status(404).json({ error: `Nessuna SIM disponibile per ${phoneNumber}` });
             targetDeviceId = match.device_id;
             targetSimId    = match.sim_id;
+            console.log(`📍 SIM trovata: ${match.label || match.candidate} → ${match.device_id}/${match.sim_id}`);
         }
 
         if (!targetDeviceId || !targetSimId) return res.status(400).json({ error: "Specifica un numero di telefono o deviceId+simId" });
