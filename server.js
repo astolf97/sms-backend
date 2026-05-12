@@ -457,15 +457,17 @@ app.get("/sims", requireAuth, async (req, res) => {
     try {
         const all = await q("SELECT * FROM sims");
         if (req.user.role === "admin") return res.json(all.map(s => ({ simId: s.sim_id, deviceId: s.device_id, label: s.label, candidate: s.candidate })));
-        const byCountry = {};
-        all.forEach(s => {
-            const code = getCountryCode(s.label || s.candidate || "") || "OTHER";
-            const flag = flagMap[code] || "🌍";
-            const key  = `${flag} ${code}`;
-            if (!byCountry[key]) byCountry[key] = { simId: `country-${code}`, deviceId: "—", label: key, candidate: null, isRedacted: true, count: 0 };
-            byCountry[key].count++;
-        });
-        res.json(Object.values(byCountry).map(c => ({ ...c, label: `${c.label} (${c.count} SIM)` })));
+
+        // User: restituisce ogni SIM con il numero reale (oscurato solo per SMS, non per selezione test)
+        // Filtra solo SIM con numero configurato
+        const configured = all.filter(s => s.label?.trim() || s.candidate?.trim());
+        res.json(configured.map(s => ({
+            simId:     s.sim_id,
+            deviceId:  s.device_id,
+            label:     s.label?.trim() || s.candidate?.trim(),
+            candidate: s.candidate,
+            isRedacted: false
+        })));
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
