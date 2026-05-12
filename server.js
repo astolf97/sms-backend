@@ -489,12 +489,41 @@ app.post("/sms", authDevice, async (req, res) => {
 
 app.get("/sms", requireAuth, async (req, res) => {
     try {
-        const rows = await q("SELECT * FROM sms ORDER BY timestamp DESC LIMIT 1000");
-        if (req.user.role === "admin") return res.json(rows);
-        res.json(rows.map(s => ({ ...s, sender: redactSender(s.sender) })));
-    } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
+        // ADMIN vede tutto
+        if (req.user.role === "admin") {
+            const rows = await q(`
+                SELECT *
+                FROM sms
+                ORDER BY timestamp DESC
+                LIMIT 1000
+            `);
+
+            return res.json(rows);
+        }
+
+        // USER vede SOLO sms collegati ai suoi test
+        const rows = await q(`
+            SELECT DISTINCT s.*
+            FROM sms s
+            INNER JOIN tests t
+                ON t.device_id = s.device_id
+                AND t.sim_id = s.sim_id
+            WHERE t.user_id = ?
+            ORDER BY s.timestamp DESC
+            LIMIT 1000
+        `, [req.user.id]);
+
+        res.json(rows.map(s => ({
+            ...s,
+            sender: redactSender(s.sender)
+        })));
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
 // ────────────────────────────────────────────
 // SIMS
 // ────────────────────────────────────────────
