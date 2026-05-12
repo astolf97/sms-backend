@@ -1229,7 +1229,8 @@ async function doLogin() {
             return;
         }
 
-        // SUCCESS
+        // SUCCESS — clear any old session before saving new one
+        sessionStorage.clear();
         S.token    = data.token;
         S.user     = data.user;
         S.attempts = 0;
@@ -1268,7 +1269,7 @@ function enterApp() {
 function doLogout() {
     api("/auth/logout", { method: "POST" });
     S.token = null; S.user = null;
-    sessionStorage.removeItem(S.SESS_KEY);
+    sessionStorage.clear();   // clear ALL session data
     stopPolling();
     showScreen("login");
     document.getElementById("loginPassword").value = "";
