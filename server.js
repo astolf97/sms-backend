@@ -32,13 +32,36 @@ if (!process.env.TURSO_TOKEN) console.error("❌ TURSO_TOKEN mancante!");
 // ────────────────────────────────────────────
 // DATABASE (Turso)
 // ────────────────────────────────────────────
+// Validate URL format
+const rawUrl = process.env.TURSO_URL || "file:local.db";
+const tursoUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://")
+    ? rawUrl.replace(/^https?:\/\//, "libsql://")
+    : rawUrl;
+
+if (rawUrl !== tursoUrl) console.log(`⚠️  URL corretto automaticamente: ${tursoUrl}`);
+
 const db = createClient({
-    url:       process.env.TURSO_URL   || "file:local.db",
+    url:       tursoUrl,
     authToken: process.env.TURSO_TOKEN || undefined
 });
 
-async function q(sql, args = [])  { const r = await db.execute({ sql, args }); return r.rows; }
-async function run(sql, args = []) { await db.execute({ sql, args }); }
+async function q(sql, args = []) {
+    try {
+        const r = await db.execute({ sql, args });
+        return r.rows;
+    } catch(e) {
+        console.error("DB query error:", e.message, "SQL:", sql.slice(0,80));
+        throw e;
+    }
+}
+async function run(sql, args = []) {
+    try {
+        await db.execute({ sql, args });
+    } catch(e) {
+        console.error("DB run error:", e.message, "SQL:", sql.slice(0,80));
+        throw e;
+    }
+}
 async function one(sql, args = []) { const r = await q(sql, args); return r[0]; }
 
 async function initSchema() {
