@@ -706,10 +706,6 @@
                     <option value="24">24 ore</option>
                     <option value="168">7 giorni</option>
                 </select>
-                <select id="filterUser" onchange="loadTests()"
-                    style="flex:1;min-width:90px;font-size:11px;padding:5px 8px;display:none">
-                    <option value="">Tutti gli utenti</option>
-                </select>
                 <button class="btn btn-ghost" style="font-size:10px;padding:5px 8px" onclick="clearTestFilters()">✕</button>
             </div>
 
@@ -1626,32 +1622,19 @@ async function createTest() {
 function clearTestFilters() {
     document.getElementById("filterStatus").value = "";
     document.getElementById("filterPeriod").value = "";
-    const filterUser = document.getElementById("filterUser");
-    if (filterUser) filterUser.value = "";
     loadTests();
 }
 
 async function populateUserFilter() {
-    if (S.user?.role !== "admin") return;
-    const filterUser = document.getElementById("filterUser");
-    if (!filterUser) return;
-    filterUser.style.display = "";
-
-    const users = await api("/admin/users");
-    if (!users) return;
-
-    filterUser.innerHTML = '<option value="">Tutti gli utenti</option>' +
-        users.map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join("");
+    // No-op: filtering is done server-side automatically
 }
 
 async function loadTests() {
     const status = document.getElementById("filterStatus")?.value || "";
     const period = document.getElementById("filterPeriod")?.value || "";
-    const userId = document.getElementById("filterUser")?.value || "";
 
     const params = new URLSearchParams();
     if (status) params.set("status", status);
-    if (userId) params.set("userId", userId);
     if (period) {
         const from = Date.now() - parseInt(period) * 3600000;
         params.set("from", String(from));
