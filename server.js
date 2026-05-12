@@ -580,35 +580,77 @@ app.get("/tests", requireAuth, async (req, res) => {
     try {
         const { status, from, to, userId } = req.query;
         const isAdmin = req.user.role === "admin";
-        console.log(`📋 GET /tests | user=${req.user.username} (${req.user.id}) | role=${req.user.role} | isAdmin=${isAdmin}`);
 
-        let sql  = "SELECT * FROM tests WHERE 1=1";
+        let sql = `
+            SELECT
+                id,
+                expected,
+                device_id,
+                sim_id,
+                status,
+                result,
+                timeout_ms,
+                created_at,
+                completed_at,
+                created_by,
+                user_id
+            FROM tests
+            WHERE 1=1
+        `;
+
         const args = [];
 
-        // Non-admin sees ONLY their own tests — no NULL, no other users
+        // USER → SOLO i propri test
         if (!isAdmin) {
-            sql += " AND user_id IS NOT NULL AND user_id = ?";
+            sql += " AND user_id = ?";
             args.push(req.user.id);
-        
-        } else if (userId) {
-            // Admin can filter by specific user
+        }
+
+        // ADMIN filter opzionale
+        if (isAdmin && userId) {
             sql += " AND user_id = ?";
             args.push(userId);
         }
 
-        if (status) { sql += " AND status = ?"; args.push(status); }
-        if (from)   { sql += " AND created_at >= ?"; args.push(Number(from)); }
-        if (to)     { sql += " AND created_at <= ?"; args.push(Number(to)); }
+        if (status) {
+            sql += " AND status = ?";
+            args.push(status);
+        }
+
+        if (from) {
+            sql += " AND created_at >= ?";
+            args.push(Number(from));
+        }
+
+        if (to) {
+            sql += " AND created_at <= ?";
+            args.push(Number(to));
+        }
+
         sql += " ORDER BY created_at DESC LIMIT 500";
+
         const rows = await q(sql, args);
+
         res.json(rows.map(t => ({
-            id: t.id, expected: t.expected, deviceId: t.device_id, simId: t.sim_id,
-            status: t.status, result: t.result, createdAt: t.created_at,
-            completedAt: t.completed_at, timeout: t.timeout_ms, createdBy: t.created_by,
+            id: t.id,
+            expected: t.expected,
+            deviceId: t.device_id,
+            simId: t.sim_id,
+            status: t.status,
+            result: t.result,
+            createdAt: t.created_at,
+            completedAt: t.completed_at,
+            timeout: t.timeout_ms,
+            createdBy: t.created_by,
             userId: t.user_id
         })));
-    } catch(e) { res.status(500).json({ error: e.message }); }
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
 });
+
 
 // ────────────────────────────────────────────
 // STATS
