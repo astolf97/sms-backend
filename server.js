@@ -587,8 +587,9 @@ app.get("/tests", requireAuth, async (req, res) => {
 
         // Non-admin sees ONLY their own tests — no NULL, no other users
         if (!isAdmin) {
-            sql += " AND user_id = ?";
+            sql += " AND user_id IS NOT NULL AND user_id = ?";
             args.push(req.user.id);
+        
         } else if (userId) {
             // Admin can filter by specific user
             sql += " AND user_id = ?";
@@ -670,8 +671,20 @@ async function startScheduleJob(s) {
             const now = Date.now();
             const id  = String(now);
             await run("UPDATE schedules SET last_run=?, next_run=? WHERE id=?", [now, now + s.interval_ms, s.id]);
-            await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
-                [id, s.expected, s.device_id, s.sim_id, "PENDING", 60000, now, `⏱ ${s.name}`, s.created_by_user_id || null]);
+            await run(
+                "INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                [
+                    id,
+                    s.expected,
+                    s.device_id,
+                    s.sim_id,
+                    "PENDING",
+                    60000,
+                    now,
+                    `⏱ ${s.name}`,
+                    s.user_id
+                ]
+            );
             io.emit("new_test", { id, expected: s.expected, deviceId: s.device_id, simId: s.sim_id, status: "PENDING", createdAt: now });
             console.log(`🗓 Schedule run: ${s.name}`);
         } catch(e) { console.error("Schedule error:", e.message); }
@@ -691,8 +704,21 @@ app.post("/schedules", requireAdmin, async (req, res) => {
         const intervalMs = Math.max(5, parseInt(intervalMinutes)) * 60000;
         const id = crypto.randomUUID();
         const now = Date.now();
-        await run("INSERT INTO schedules (id,name,expected,device_id,sim_id,interval_minutes,interval_ms,enabled,next_run,created_at,created_by) VALUES (?,?,?,?,?,?,?,1,?,?,?)",
-            [id, name.trim(), expected.trim(), deviceId, simId, parseInt(intervalMinutes), intervalMs, now + intervalMs, now, req.user.username]);
+        await run("INSERT INTO schedules (id,name,expected,device_id,sim_id,interval_minutes,interval_ms,enabled,next_run,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            [
+                id,
+                name.trim(),
+                expected.trim(),
+                deviceId,
+                simId,
+                parseInt(intervalMinutes),
+                intervalMs,
+                1,
+                now + intervalMs,
+                now,
+                req.user.username,
+                req.user.id
+            ]);
         const s = await one("SELECT * FROM schedules WHERE id = ?", [id]);
         await startScheduleJob(s);
         res.status(201).json(s);
