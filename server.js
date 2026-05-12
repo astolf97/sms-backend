@@ -56,7 +56,12 @@ async function q(sql, args = []) {
 }
 async function run(sql, args = []) {
     try {
-        await db.execute({ sql, args });
+        // Use execute directly — args=[] means no params, use plain string
+        if (args.length === 0) {
+            await db.execute(sql);
+        } else {
+            await db.execute({ sql, args });
+        }
     } catch(e) {
         console.error("DB run error:", e.message, "SQL:", sql.slice(0,80));
         throw e;
@@ -65,7 +70,8 @@ async function run(sql, args = []) {
 async function one(sql, args = []) { const r = await q(sql, args); return r[0]; }
 
 async function initSchema() {
-    const tables = [
+    // Use batch() to create all tables in one request — avoids migration job issues
+    await db.batch([
         `CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user', active INTEGER NOT NULL DEFAULT 1,
@@ -102,8 +108,7 @@ async function initSchema() {
         `CREATE INDEX IF NOT EXISTS idx_sms_ts        ON sms(timestamp)`,
         `CREATE INDEX IF NOT EXISTS idx_tests_status  ON tests(status)`,
         `CREATE INDEX IF NOT EXISTS idx_tests_created ON tests(created_at)`,
-    ];
-    for (const sql of tables) await run(sql);
+    ], "deferred");
     console.log("✅ Schema DB pronto");
 }
 
