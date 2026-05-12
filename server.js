@@ -92,18 +92,44 @@ async function initSchema() {
             id TEXT PRIMARY KEY, device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
             label TEXT, candidate TEXT, last_seen INTEGER, UNIQUE(device_id, sim_id))`,
         `CREATE TABLE IF NOT EXISTS sms (
-            id TEXT PRIMARY KEY, device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
-            sender TEXT, message TEXT, timestamp INTEGER NOT NULL, created_at INTEGER NOT NULL)`,
+            id TEXT PRIMARY KEY,
+            device_id TEXT NOT NULL,
+            sim_id TEXT NOT NULL,
+            sender TEXT,
+            message TEXT,
+            timestamp INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            test_id TEXT,
+            is_test INTEGER DEFAULT 0,
+            test_status TEXT,
+            test_expected TEXT,
+            test_user_id TEXT,
+            test_created_by TEXT
+        )`,
         `CREATE TABLE IF NOT EXISTS tests (
             id TEXT PRIMARY KEY, expected TEXT NOT NULL, device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'PENDING', result TEXT, timeout_ms INTEGER NOT NULL DEFAULT 30000,
             created_at INTEGER NOT NULL, completed_at INTEGER, created_by TEXT, user_id TEXT)`,
         `CREATE TABLE IF NOT EXISTS schedules (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, expected TEXT NOT NULL,
-            device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
-            interval_minutes INTEGER NOT NULL, interval_ms INTEGER NOT NULL,
-            enabled INTEGER NOT NULL DEFAULT 1, last_run INTEGER, next_run INTEGER,
-            created_at INTEGER NOT NULL, created_by TEXT)`,
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            expected TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            sim_id TEXT NOT NULL,
+
+            interval_minutes INTEGER NOT NULL,
+            interval_ms INTEGER NOT NULL,
+
+            enabled INTEGER NOT NULL DEFAULT 1,
+
+            last_run INTEGER,
+            next_run INTEGER,
+
+            created_at INTEGER NOT NULL,
+
+            created_by TEXT,
+            user_id TEXT
+        )`,
         `CREATE INDEX IF NOT EXISTS idx_sms_device    ON sms(device_id)`,
         `CREATE INDEX IF NOT EXISTS idx_sms_ts        ON sms(timestamp)`,
         `CREATE INDEX IF NOT EXISTS idx_tests_status  ON tests(status)`,
@@ -367,7 +393,7 @@ app.patch("/app/device/:deviceId/rename", requireAppAuth, async (req, res) => {
 
 app.get("/app/sms", requireAppAuth, async (req, res) => {
     try {
-        const rows = await q("SELECT s.* FROM sms s JOIN devices d ON s.device_id = d.device_id WHERE d.app_user_id = ? ORDER BY s.timestamp DESC LIMIT 500", [req.appUser.id]);
+        const rows = await q("SELECT * FROM sms WHERE is_test = 1 AND test_user_id = ? ORDER BY timestamp DESC LIMIT 500", [req.appUser.id]);
         res.json(rows);
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -450,41 +476,169 @@ io.on("connection", (socket) => {
 app.post("/sms", authDevice, async (req, res) => {
     try {
         const sms = req.body;
-        if (!sms?.deviceId || !sms?.simId) return res.status(400).json({ error: "Campi obbligatori" });
+
+        if (!sms?.deviceId || !sms?.simId) {
+            return res.status(400).json({
+                error: "Campi obbligatori"
+            });
+        }
 
         const id = crypto.randomUUID();
         const ts = sms.timestamp || Date.now();
-        await run("INSERT INTO sms (id,device_id,sim_id,sender,message,timestamp,created_at) VALUES (?,?,?,?,?,?,?)",
-            [id, sms.deviceId, sms.simId, sms.sender || null, sms.message || null, ts, Date.now()]);
 
-        // Upsert SIM lastSeen
-        const existingSim = await one("SELECT id FROM sims WHERE device_id = ? AND sim_id = ?", [sms.deviceId, sms.simId]);
+        // Cerca test pending
+        const pending = await q(`
+            SELECT *
+            FROM tests
+            WHERE status = 'PENDING'
+        `);
+
+        const msg = (sms.message || "").toLowerCase();
+
+        const matchedTest = pending.find(test =>
+            test.device_id === sms.deviceId &&
+            test.sim_id === sms.simId &&
+            msg.includes(
+                (test.expected || "").toLowerCase()
+            )
+        );
+
+        // Inserisci SMS
+        await run(`
+            INSERT INTO sms (
+                id,
+                device_id,
+                sim_id,
+                sender,
+                message,
+                timestamp,
+                created_at,
+                test_id,
+                is_test,
+                test_status,
+                test_expected,
+                test_user_id,
+                test_created_by
+            )
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `, [
+            id,
+            sms.deviceId,
+            sms.simId,
+            sms.sender || null,
+            sms.message || null,
+            ts,
+            Date.now(),
+            matchedTest?.id,
+            matchedTest ? 1 : 0,
+            matchedTest ? "PASS" : null,
+            matchedTest?.expected || null,
+            matchedTest?.user_id || null,
+            matchedTest?.created_by || null
+        ]);
+
+        // Aggiorna SIM
+        const existingSim = await one(`
+            SELECT id
+            FROM sims
+            WHERE device_id = ?
+            AND sim_id = ?
+        `, [
+            sms.deviceId,
+            sms.simId
+        ]);
+
         if (!existingSim) {
-            await run("INSERT INTO sims (id,device_id,sim_id,label,candidate,last_seen) VALUES (?,?,?,?,?,?)",
-                [crypto.randomUUID(), sms.deviceId, sms.simId, null, null, Date.now()]);
+            await run(`
+                INSERT INTO sims (
+                    id,
+                    device_id,
+                    sim_id,
+                    label,
+                    candidate,
+                    last_seen
+                )
+                VALUES (?,?,?,?,?,?)
+            `, [
+                crypto.randomUUID(),
+                sms.deviceId,
+                sms.simId,
+                null,
+                null,
+                Date.now()
+            ]);
         } else {
-            await run("UPDATE sims SET last_seen = ? WHERE device_id = ? AND sim_id = ?", [Date.now(), sms.deviceId, sms.simId]);
+            await run(`
+                UPDATE sims
+                SET last_seen = ?
+                WHERE device_id = ?
+                AND sim_id = ?
+            `, [
+                Date.now(),
+                sms.deviceId,
+                sms.simId
+            ]);
         }
 
-        // Update online device sims list
-        const dev = Object.values(devicesOnline).find(d => d.deviceId === sms.deviceId);
-        if (dev && !dev.sims.find(s => s.simId === sms.simId)) dev.sims.push({ simId: sms.simId });
+        // Device runtime
+        const dev = Object.values(devicesOnline)
+            .find(d => d.deviceId === sms.deviceId);
 
-        io.emit("new_sms", { ...sms, id, timestamp: ts });
-
-        // Check pending tests
-        const pending = await q("SELECT * FROM tests WHERE status = 'PENDING'");
-        for (const test of pending) {
-            if (test.device_id === sms.deviceId && test.sim_id === sms.simId &&
-                sms.message?.toLowerCase().includes(test.expected.toLowerCase())) {
-                await run("UPDATE tests SET status='PASS', result=?, completed_at=? WHERE id=?", [sms.message, Date.now(), test.id]);
-                io.emit("test_update", { id: test.id, status: "PASS", result: sms.message, completedAt: Date.now() });
-                console.log(`✅ TEST PASS: ${test.id}`);
-            }
+        if (
+            dev &&
+            !dev.sims.find(s => s.simId === sms.simId)
+        ) {
+            dev.sims.push({
+                simId: sms.simId
+            });
         }
 
-        res.json({ status: "ok", id });
-    } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
+        // PASS test
+        if (matchedTest) {
+
+            await run(`
+                UPDATE tests
+                SET
+                    status = 'PASS',
+                    result = ?,
+                    completed_at = ?
+                WHERE id = ?
+            `, [
+                sms.message,
+                Date.now(),
+                matchedTest.id
+            ]);
+
+            console.log(`✅ TEST PASS: ${matchedTest.id}`);
+        }
+
+        // Emit SOLO SMS
+        io.emit("new_sms", {
+            id,
+            deviceId: sms.deviceId,
+            simId: sms.simId,
+            sender: sms.sender,
+            message: sms.message,
+            timestamp: ts,
+
+            isTest: !!matchedTest,
+            testStatus: matchedTest ? "PASS" : null,
+            expected: matchedTest?.expected || null
+        });
+
+        res.json({
+            status: "ok",
+            id
+        });
+
+    } catch(e) {
+
+        console.error(e);
+
+        res.status(500).json({
+            error: e.message
+        });
+    }
 });
 
 app.get("/sms", requireAuth, async (req, res) => {
@@ -492,6 +646,7 @@ app.get("/sms", requireAuth, async (req, res) => {
 
         // ADMIN vede tutto
         if (req.user.role === "admin") {
+
             const rows = await q(`
                 SELECT *
                 FROM sms
@@ -502,28 +657,35 @@ app.get("/sms", requireAuth, async (req, res) => {
             return res.json(rows);
         }
 
-        // USER vede SOLO sms collegati ai suoi test
+        // USER vede SOLO i suoi sms-test
         const rows = await q(`
-            SELECT DISTINCT s.*
-            FROM sms s
-            INNER JOIN tests t
-                ON t.device_id = s.device_id
-                AND t.sim_id = s.sim_id
-            WHERE t.user_id = ?
-            ORDER BY s.timestamp DESC
+            SELECT *
+            FROM sms
+            WHERE
+                is_test = 1
+                AND test_user_id = ?
+            ORDER BY timestamp DESC
             LIMIT 1000
-        `, [req.user.id]);
+        `, [
+            req.user.id
+        ]);
 
         res.json(rows.map(s => ({
             ...s,
             sender: redactSender(s.sender)
         })));
 
-    } catch (e) {
+    } catch(e) {
+
         console.error(e);
-        res.status(500).json({ error: e.message });
+
+        res.status(500).json({
+            error: e.message
+        });
     }
 });
+
+
 // ────────────────────────────────────────────
 // SIMS
 // ────────────────────────────────────────────
@@ -597,7 +759,7 @@ app.post("/test", requireAuth, async (req, res) => {
     try {
         const { expected, deviceId, simId } = req.body;
         if (!expected || !deviceId || !simId) return res.status(400).json({ error: "Campi obbligatori" });
-        const id  = String(Date.now());
+        const id  = crypto.randomUUID();
         const now = Date.now();
         await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
             [id, expected.trim(), deviceId, simId, "PENDING", 30000, now, req.user.username, req.user.id]);
@@ -829,7 +991,14 @@ setInterval(async () => {
         for (const test of pending) {
             if (now - test.created_at > test.timeout_ms) {
                 await run("UPDATE tests SET status='FAIL', completed_at=? WHERE id=?", [now, test.id]);
-                io.emit("test_update", { id: test.id, status: "FAIL", completedAt: now });
+                await run(`
+                    UPDATE sms
+                    SET test_status = 'FAIL'
+                    WHERE test_id = ?
+                    AND test_status IS NULL
+                `, [
+                    test.id
+                ]);
                 console.log(`❌ TEST FAIL timeout: ${test.id}`);
             }
         }
