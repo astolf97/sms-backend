@@ -524,14 +524,36 @@ app.patch("/device/:deviceId/rename", requireAdmin, async (req, res) => {
 // ────────────────────────────────────────────
 app.post("/test", requireAuth, async (req, res) => {
     try {
-        const { expected, deviceId, simId } = req.body;
-        if (!expected || !deviceId || !simId) return res.status(400).json({ error: "Campi obbligatori" });
+        const { expected, phoneNumber, deviceId, simId } = req.body;
+        if (!expected) return res.status(400).json({ error: "Testo atteso obbligatorio" });
+
+        let targetDeviceId = deviceId;
+        let targetSimId    = simId;
+
+        // Se l'utente passa un numero di telefono, troviamo device+sim automaticamente
+        if (phoneNumber && !deviceId) {
+            const norm = phoneNumber.replace(/\s+/g, "").trim();
+            const allSims = await q("SELECT * FROM sims");
+            const match = allSims.find(s => {
+                const num = (s.label || s.candidate || "").replace(/\s+/g, "");
+                if (!num) return false;
+                const a = num.replace(/\D/g, "").slice(-9);
+                const b = norm.replace(/\D/g, "").slice(-9);
+                return a === b && a.length >= 6;
+            });
+            if (!match) return res.status(404).json({ error: `Nessuna SIM trovata per il numero ${phoneNumber}` });
+            targetDeviceId = match.device_id;
+            targetSimId    = match.sim_id;
+        }
+
+        if (!targetDeviceId || !targetSimId) return res.status(400).json({ error: "Specifica un numero di telefono o deviceId+simId" });
+
         const id  = crypto.randomUUID();
         const now = Date.now();
         await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
-            [id, expected.trim(), deviceId, simId, "PENDING", 30000, now, req.user.username, req.user.id]);
-        console.log(`🧪 Test creato: ${id} | user=${req.user.username} (${req.user.id})`);
-        res.json({ id, expected: expected.trim(), deviceId, simId, status: "PENDING", createdAt: now, timeout: 30000, createdBy: req.user.username });
+            [id, expected.trim(), targetDeviceId, targetSimId, "PENDING", 30000, now, req.user.username, req.user.id]);
+        console.log(`🧪 Test creato: ${id} | user=${req.user.username} | device=${targetDeviceId} sim=${targetSimId}`);
+        res.json({ id, expected: expected.trim(), deviceId: targetDeviceId, simId: targetSimId, status: "PENDING", createdAt: now, timeout: 30000, createdBy: req.user.username });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

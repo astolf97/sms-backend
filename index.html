@@ -715,7 +715,7 @@
                 <input id="expected" placeholder="es: OTP, codice, verify..." style="margin-bottom:12px">
 
                 <!-- Step 2: filtro paese -->
-                <div class="field-label" style="margin-bottom:6px">② Filtra per paese</div>
+                <div class="field-label" style="margin-bottom:6px" id="step2label">② Filtra per paese</div>
                 <div id="testCountryFilter" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;">
                     <button class="cf-btn cf-active" data-prefix="" onclick="setTestCountry(this,'')">🌍 Tutti</button>
                     <button class="cf-btn" data-prefix="+39"  onclick="setTestCountry(this,'+39')">🇮🇹 IT +39</button>
@@ -733,7 +733,7 @@
                 </div>
 
                 <!-- Step 3: selezione numero -->
-                <div class="field-label" style="margin-bottom:6px">③ Seleziona numero <span id="simCount" style="color:var(--text-dim);font-weight:400"></span></div>
+                <div class="field-label" style="margin-bottom:6px">③ Seleziona numero destinatario <span id="simCount" style="color:var(--text-dim);font-weight:400"></span></div>
                 <div id="simNumberList" style="
                     display:flex; flex-direction:column; gap:6px;
                     max-height:180px; overflow-y:auto;
@@ -1562,13 +1562,18 @@ function renderSimNumberList() {
         const flag  = getCountryFlag(label);
         const sel   = selectedSimKey === key;
 
-        // user view: show country only, no phone number, no deviceId
+        // user view: mostra numero di telefono reale
         if (!isAdmin || sim.isRedacted) {
+            const phoneNum = sim.label?.trim() || sim.candidate?.trim() || "";
+            const hasPhone = phoneNum.length > 0;
             return `<div class="sim-num-card${sel ? " selected" : ""}"
-                         onclick="selectSim('${key.replace(/'/g,"\'")}')">
+                         onclick="${hasPhone ? `selectSim('${key.replace(/'/g,"\\'")}')` : "showToast('⚠ Numero non ancora configurato','error')"}">
                 <div class="sim-num-flag" style="font-size:22px">${flag || "🌍"}</div>
                 <div class="sim-num-info">
-                    <div class="sim-num-label">${esc(label)}</div>
+                    <div class="sim-num-label" style="color:${hasPhone ? 'var(--text)' : 'var(--text-dim)'}">
+                        ${hasPhone ? esc(phoneNum) : "Numero non configurato"}
+                    </div>
+                    ${!hasPhone ? `<div class="sim-num-sub" style="color:var(--red);font-size:9px">⚠ contatta l'amministratore</div>` : ""}
                 </div>
                 <div class="sim-num-check">✓</div>
             </div>`;
@@ -1601,17 +1606,25 @@ async function loadSimSelect() {
 // ── TESTS
 async function createTest() {
     const expected = document.getElementById("expected").value.trim();
-
     if (!expected) { showToast("⚠ Inserisci il testo atteso", "error"); return; }
-    if (!selectedSimKey) { showToast("⚠ Seleziona un numero dal pannello", "error"); return; }
+    if (!selectedSimKey) { showToast("⚠ Seleziona un numero", "error"); return; }
 
-    const [deviceId, simId] = selectedSimKey.split("||");
+    const isAdmin = S.user?.role === "admin";
+    let body;
 
-    const res = await api("/test", {
-        method: "POST",
-        body: JSON.stringify({ expected, deviceId, simId })
-    });
+    if (isAdmin) {
+        // Admin: passa deviceId + simId direttamente
+        const [deviceId, simId] = selectedSimKey.split("||");
+        body = { expected, deviceId, simId };
+    } else {
+        // User: passa solo il numero di telefono, il backend trova device+sim
+        const sim = S.simsCache.find(s => (s.deviceId + "||" + s.simId) === selectedSimKey);
+        const phoneNumber = sim?.label?.trim() || sim?.candidate?.trim();
+        if (!phoneNumber) { showToast("⚠ Numero SIM non configurato", "error"); return; }
+        body = { expected, phoneNumber };
+    }
 
+    const res = await api("/test", { method: "POST", body: JSON.stringify(body) });
     if (res) {
         document.getElementById("expected").value = "";
         showToast("🧪 Test avviato");
