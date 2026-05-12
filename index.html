@@ -1521,6 +1521,7 @@ async function loadSimsCache() {
 // ── country filter for test panel
 let testCountryPrefix = "";
 let selectedSimKey    = null;   // "deviceId||simId"
+const testPhoneLabels = {};     // testId → phoneLabel (per mostrare numero subito)
 
 function setTestCountry(btn, prefix) {
     testCountryPrefix = prefix;
@@ -1628,6 +1629,8 @@ async function createTest() {
     if (res) {
         document.getElementById("expected").value = "";
         showToast("🧪 Test avviato");
+        // Salva il numero di telefono per questo test così lo mostriamo subito
+        if (res.phoneLabel) testPhoneLabels[res.id] = res.phoneLabel;
         await loadTests();
     }
 }
@@ -1675,9 +1678,13 @@ async function loadTests() {
         }
 
         const isAdmin  = S.user?.role === "admin";
-        // Trova il numero di telefono della SIM associata al test
+        // Trova il numero di telefono — prima dal server, poi dalla cache locale, poi dalla simsCache
         const simData  = S.simsCache.find(s => s.deviceId === test.deviceId && s.simId === test.simId);
-        const phoneNum = simData?.label?.trim() || simData?.candidate?.trim() || test.simId;
+        const phoneNum = test.phoneLabel
+                      || testPhoneLabels[test.id]
+                      || simData?.label?.trim()
+                      || simData?.candidate?.trim()
+                      || test.simId;
         const simFlag  = getCountryFlag(phoneNum);
 
         return `

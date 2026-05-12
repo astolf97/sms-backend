@@ -568,8 +568,11 @@ app.post("/test", requireAuth, async (req, res) => {
         const now = Date.now();
         await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
             [id, expected.trim(), targetDeviceId, targetSimId, "PENDING", 30000, now, req.user.username, req.user.id]);
-        console.log(`🧪 Test creato: ${id} | user=${req.user.username} | device=${targetDeviceId} sim=${targetSimId}`);
-        res.json({ id, expected: expected.trim(), deviceId: targetDeviceId, simId: targetSimId, status: "PENDING", createdAt: now, timeout: 30000, createdBy: req.user.username });
+        // Recupera il numero di telefono della SIM per mostrarlo subito
+        const simInfo = await one("SELECT * FROM sims WHERE device_id = ? AND sim_id = ?", [targetDeviceId, targetSimId]);
+        const phoneLabel = simInfo?.label?.trim() || simInfo?.candidate?.trim() || targetSimId;
+        console.log(`🧪 Test creato: ${id} | user=${req.user.username} | device=${targetDeviceId} sim=${targetSimId} phone=${phoneLabel}`);
+        res.json({ id, expected: expected.trim(), deviceId: targetDeviceId, simId: targetSimId, phoneLabel, status: "PENDING", createdAt: now, timeout: 30000, createdBy: req.user.username });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -595,11 +598,18 @@ app.get("/tests", requireAuth, async (req, res) => {
         console.log(`📋 GET /tests | user=${req.user.username} | isAdmin=${isAdmin} | sql: ...${sql.slice(-50)}`);
 
         const rows = await q(sql, args);
-        res.json(rows.map(t => ({
-            id: t.id, expected: t.expected, deviceId: t.device_id, simId: t.sim_id,
-            status: t.status, result: t.result, createdAt: t.created_at,
-            completedAt: t.completed_at, timeout: t.timeout_ms, createdBy: t.created_by
-        })));
+        // Arricchisci con il numero di telefono della SIM
+        const enriched = await Promise.all(rows.map(async t => {
+            const sim = await one("SELECT * FROM sims WHERE device_id = ? AND sim_id = ?", [t.device_id, t.sim_id]);
+            const phoneLabel = sim?.label?.trim() || sim?.candidate?.trim() || t.sim_id;
+            return {
+                id: t.id, expected: t.expected, deviceId: t.device_id, simId: t.sim_id,
+                phoneLabel,
+                status: t.status, result: t.result, createdAt: t.created_at,
+                completedAt: t.completed_at, timeout: t.timeout_ms, createdBy: t.created_by
+            };
+        }));
+        res.json(enriched);
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
