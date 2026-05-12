@@ -580,6 +580,7 @@ app.get("/tests", requireAuth, async (req, res) => {
     try {
         const { status, from, to, userId } = req.query;
         const isAdmin = req.user.role === "admin";
+        console.log(`📋 GET /tests | user=${req.user.username} (${req.user.id}) | role=${req.user.role} | isAdmin=${isAdmin}`);
 
         let sql  = "SELECT * FROM tests WHERE 1=1";
         const args = [];
