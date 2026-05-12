@@ -690,6 +690,29 @@
         <div class="panel">
             <div class="panel-title">🧪 Test SMS</div>
 
+            <!-- Filters bar -->
+            <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+                <select id="filterStatus" onchange="loadTests()"
+                    style="flex:1;min-width:90px;font-size:11px;padding:5px 8px">
+                    <option value="">Tutti gli stati</option>
+                    <option value="PASS">✅ PASS</option>
+                    <option value="FAIL">❌ FAIL</option>
+                    <option value="PENDING">⏳ PENDING</option>
+                </select>
+                <select id="filterPeriod" onchange="loadTests()"
+                    style="flex:1;min-width:90px;font-size:11px;padding:5px 8px">
+                    <option value="">Sempre</option>
+                    <option value="1">Ultima ora</option>
+                    <option value="24">24 ore</option>
+                    <option value="168">7 giorni</option>
+                </select>
+                <select id="filterUser" onchange="loadTests()"
+                    style="flex:1;min-width:90px;font-size:11px;padding:5px 8px;display:none">
+                    <option value="">Tutti gli utenti</option>
+                </select>
+                <button class="btn btn-ghost" style="font-size:10px;padding:5px 8px" onclick="clearTestFilters()">✕</button>
+            </div>
+
             <div class="test-form">
                 <!-- Step 1: testo atteso -->
                 <div class="field-label" style="margin-bottom:6px">① Testo atteso</div>
@@ -1263,6 +1286,7 @@ async function initDashboard() {
     await loadSimSelect();
     await loadSMS();
     await loadTests();
+    await populateUserFilter();
     startPolling();
 }
 
@@ -1598,8 +1622,42 @@ async function createTest() {
     }
 }
 
+function clearTestFilters() {
+    document.getElementById("filterStatus").value = "";
+    document.getElementById("filterPeriod").value = "";
+    const filterUser = document.getElementById("filterUser");
+    if (filterUser) filterUser.value = "";
+    loadTests();
+}
+
+async function populateUserFilter() {
+    if (S.user?.role !== "admin") return;
+    const filterUser = document.getElementById("filterUser");
+    if (!filterUser) return;
+    filterUser.style.display = "";
+
+    const users = await api("/admin/users");
+    if (!users) return;
+
+    filterUser.innerHTML = '<option value="">Tutti gli utenti</option>' +
+        users.map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join("");
+}
+
 async function loadTests() {
-    const data = await api("/tests");
+    const status = document.getElementById("filterStatus")?.value || "";
+    const period = document.getElementById("filterPeriod")?.value || "";
+    const userId = document.getElementById("filterUser")?.value || "";
+
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (userId) params.set("userId", userId);
+    if (period) {
+        const from = Date.now() - parseInt(period) * 3600000;
+        params.set("from", String(from));
+    }
+
+    const qs   = params.toString();
+    const data = await api("/tests" + (qs ? "?" + qs : ""));
     if (!data) return;
 
     const c = document.getElementById("tests");

@@ -68,7 +68,7 @@ async function initSchema() {
         `CREATE TABLE IF NOT EXISTS tests (
             id TEXT PRIMARY KEY, expected TEXT NOT NULL, device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'PENDING', result TEXT, timeout_ms INTEGER NOT NULL DEFAULT 30000,
-            created_at INTEGER NOT NULL, completed_at INTEGER, created_by TEXT)`,
+            created_at INTEGER NOT NULL, completed_at INTEGER, created_by TEXT, user_id TEXT)`,
         `CREATE TABLE IF NOT EXISTS schedules (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, expected TEXT NOT NULL,
             device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
@@ -542,17 +542,30 @@ app.post("/test", requireAuth, async (req, res) => {
         if (!expected || !deviceId || !simId) return res.status(400).json({ error: "Campi obbligatori" });
         const id  = String(Date.now());
         const now = Date.now();
-        await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by) VALUES (?,?,?,?,?,?,?,?)",
-            [id, expected.trim(), deviceId, simId, "PENDING", 30000, now, req.user.username]);
+        await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            [id, expected.trim(), deviceId, simId, "PENDING", 30000, now, req.user.username, req.user.id]);
         res.json({ id, expected: expected.trim(), deviceId, simId, status: "PENDING", createdAt: now, timeout: 30000, createdBy: req.user.username });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get("/tests", requireAuth, async (req, res) => {
     try {
-        const { status, from, to } = req.query;
+        const { status, from, to, userId } = req.query;
+        const isAdmin = req.user.role === "admin";
+
         let sql  = "SELECT * FROM tests WHERE 1=1";
         const args = [];
+
+        // Non-admin sees only their own tests
+        if (!isAdmin) {
+            sql += " AND (user_id = ? OR user_id IS NULL)";
+            args.push(req.user.id);
+        } else if (userId) {
+            // Admin can filter by specific user
+            sql += " AND user_id = ?";
+            args.push(userId);
+        }
+
         if (status) { sql += " AND status = ?"; args.push(status); }
         if (from)   { sql += " AND created_at >= ?"; args.push(Number(from)); }
         if (to)     { sql += " AND created_at <= ?"; args.push(Number(to)); }
@@ -561,7 +574,8 @@ app.get("/tests", requireAuth, async (req, res) => {
         res.json(rows.map(t => ({
             id: t.id, expected: t.expected, deviceId: t.device_id, simId: t.sim_id,
             status: t.status, result: t.result, createdAt: t.created_at,
-            completedAt: t.completed_at, timeout: t.timeout_ms, createdBy: t.created_by
+            completedAt: t.completed_at, timeout: t.timeout_ms, createdBy: t.created_by,
+            userId: t.user_id
         })));
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -627,8 +641,8 @@ async function startScheduleJob(s) {
             const now = Date.now();
             const id  = String(now);
             await run("UPDATE schedules SET last_run=?, next_run=? WHERE id=?", [now, now + s.interval_ms, s.id]);
-            await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by) VALUES (?,?,?,?,?,?,?,?)",
-                [id, s.expected, s.device_id, s.sim_id, "PENDING", 60000, now, `⏱ ${s.name}`]);
+            await run("INSERT INTO tests (id,expected,device_id,sim_id,status,timeout_ms,created_at,created_by,user_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                [id, s.expected, s.device_id, s.sim_id, "PENDING", 60000, now, `⏱ ${s.name}`, s.created_by_user_id || null]);
             io.emit("new_test", { id, expected: s.expected, deviceId: s.device_id, simId: s.sim_id, status: "PENDING", createdAt: now });
             console.log(`🗓 Schedule run: ${s.name}`);
         } catch(e) { console.error("Schedule error:", e.message); }
