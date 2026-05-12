@@ -1644,12 +1644,17 @@ async function loadTests() {
     const data = await api("/tests" + (qs ? "?" + qs : ""));
     if (!data) return;
 
+    // SAFETY FILTER FRONTEND
+    const filteredData = S.user?.role === "admin"
+        ? data
+        : data.filter(t => t.userId === S.user.id);
+
     const c = document.getElementById("tests");
     const now = Date.now();
 
-    if (!data.length) { c.innerHTML = `<div class="empty">Nessun test</div>`; return; }
+    if (!filteredData.length) { c.innerHTML = `<div class="empty">Nessun test</div>`; return; }
 
-    c.innerHTML = data.slice().reverse().map(test => {
+    c.innerHTML = filteredData.map(test => {
         let cls, badge;
         if      (test.status === "PASS") { cls = "pass";    badge = `<span class="badge badge-pass">✓ PASS</span>`; }
         else if (test.status === "FAIL") { cls = "fail";    badge = `<span class="badge badge-fail">✕ FAIL</span>`; }
