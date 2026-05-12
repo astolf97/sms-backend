@@ -584,9 +584,9 @@ app.get("/tests", requireAuth, async (req, res) => {
         let sql  = "SELECT * FROM tests WHERE 1=1";
         const args = [];
 
-        // Non-admin sees only their own tests
+        // Non-admin sees ONLY their own tests — no NULL, no other users
         if (!isAdmin) {
-            sql += " AND (user_id = ? OR user_id IS NULL)";
+            sql += " AND user_id = ?";
             args.push(req.user.id);
         } else if (userId) {
             // Admin can filter by specific user
