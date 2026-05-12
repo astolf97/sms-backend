@@ -67,7 +67,76 @@ async function run(sql, args = []) {
         throw e;
     }
 }
+
 async function one(sql, args = []) { const r = await q(sql, args); return r[0]; }
+
+
+// ⬇️ QUI
+async function migrate() {
+
+    try {
+
+        const cols = await q(`PRAGMA table_info(sms)`);
+
+        console.log("SMS COLS:", cols);
+
+        const names = cols.map(c => c.name);
+
+        async function add(name, sql) {
+
+            if (!names.includes(name)) {
+
+                console.log("➕ Adding column:", name);
+
+                await run(sql);
+
+            } else {
+
+                console.log("✓ Exists:", name);
+
+            }
+        }
+
+        await add(
+            "test_id",
+            `ALTER TABLE sms ADD COLUMN test_id TEXT`
+        );
+
+        await add(
+            "is_test",
+            `ALTER TABLE sms ADD COLUMN is_test INTEGER DEFAULT 0`
+        );
+
+        await add(
+            "test_status",
+            `ALTER TABLE sms ADD COLUMN test_status TEXT`
+        );
+
+        await add(
+            "test_expected",
+            `ALTER TABLE sms ADD COLUMN test_expected TEXT`
+        );
+
+        await add(
+            "test_user_id",
+            `ALTER TABLE sms ADD COLUMN test_user_id TEXT`
+        );
+
+        await add(
+            "test_created_by",
+            `ALTER TABLE sms ADD COLUMN test_created_by TEXT`
+        );
+
+        console.log("✅ Migration completate");
+
+    } catch(e) {
+
+        console.error("❌ MIGRATION ERROR:", e);
+
+        throw e;
+    }
+}
+
 
 async function initSchema() {
     // Use batch() to create all tables in one request — avoids migration job issues
@@ -1040,13 +1109,20 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
     try {
+
         await initSchema();
+
+        // ⬇️ AGGIUNGI QUESTO
+        await migrate();
+
         await seed();
+
         server.listen(PORT, () => {
             console.log(`🚀 Server su porta ${PORT}`);
             console.log(`📱 DEVICE_API_KEY: ${DEVICE_API_KEY}`);
             console.log(`🗄  Turso: ${process.env.TURSO_URL || "locale"}`);
         });
+
     } catch(e) {
         console.error("❌ Errore avvio:", e);
         process.exit(1);
