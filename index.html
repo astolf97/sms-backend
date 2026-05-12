@@ -1644,17 +1644,12 @@ async function loadTests() {
     const data = await api("/tests" + (qs ? "?" + qs : ""));
     if (!data) return;
 
-    // SAFETY FILTER FRONTEND
-    const filteredData = S.user?.role === "admin"
-        ? data
-        : data.filter(t => t.userId === S.user.id);
-
     const c = document.getElementById("tests");
     const now = Date.now();
 
-    if (!filteredData.length) { c.innerHTML = `<div class="empty">Nessun test</div>`; return; }
+    if (!data.length) { c.innerHTML = `<div class="empty">Nessun test</div>`; return; }
 
-    c.innerHTML = filteredData.map(test => {
+    c.innerHTML = data.slice().reverse().map(test => {
         let cls, badge;
         if      (test.status === "PASS") { cls = "pass";    badge = `<span class="badge badge-pass">✓ PASS</span>`; }
         else if (test.status === "FAIL") { cls = "fail";    badge = `<span class="badge badge-fail">✕ FAIL</span>`; }
@@ -1666,15 +1661,22 @@ async function loadTests() {
             bar = `<div class="timeout-bar"><div class="timeout-fill" style="width:${pct.toFixed(1)}%"></div></div>`;
         }
 
+        const simLabel = getSimLabel(test.deviceId, test.simId);
+        const isAdmin  = S.user?.role === "admin";
+
         return `
             <div class="card ${cls}">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                     <span style="font-family:var(--mono);font-size:12px;font-weight:600">${esc(test.expected)}</span>
                     ${badge}
                 </div>
-                <div class="card-sub">📱 ${esc(test.deviceId)} · ${esc(test.simId)}</div>
+                <div class="card-sub" style="margin-top:4px">
+                    📞 <b style="color:var(--text)">${esc(simLabel)}</b>
+                </div>
+                ${isAdmin ? `<div class="card-sub">📱 ${esc(test.deviceId)} · ${esc(test.simId)}</div>` : ""}
                 <div class="card-sub">${fmtTime(test.createdAt)} · by ${esc(test.createdBy || "—")}</div>
-                ${test.completedAt ? `<div class="card-sub">✓ ${fmtTime(test.completedAt)}</div>` : ""}
+                ${test.completedAt ? `<div class="card-sub" style="color:var(--green)">✓ ${fmtTime(test.completedAt)}</div>` : ""}
+                ${test.result ? `<div class="sms-msg" style="margin-top:6px;font-size:11px">${highlightOTP(esc(test.result))}</div>` : ""}
                 ${bar}
             </div>`;
     }).join("");
