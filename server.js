@@ -76,9 +76,9 @@ async function migrate() {
 
     try {
 
-        const cols = await q(`PRAGMA table_info(sms)`);
+        const cols = await q(`PRAGMA table_info(test)`);
 
-        console.log("SMS COLS:", cols);
+        console.log("test COLS:", cols);
 
         const names = cols.map(c => c.name);
 
@@ -99,32 +99,32 @@ async function migrate() {
 
         await add(
             "test_id",
-            `ALTER TABLE sms ADD COLUMN test_id TEXT`
+            `ALTER TABLE test ADD COLUMN test_id TEXT`
         );
 
         await add(
             "is_test",
-            `ALTER TABLE sms ADD COLUMN is_test INTEGER DEFAULT 0`
+            `ALTER TABLE test ADD COLUMN is_test INTEGER DEFAULT 0`
         );
 
         await add(
             "test_status",
-            `ALTER TABLE sms ADD COLUMN test_status TEXT`
+            `ALTER TABLE test ADD COLUMN test_status TEXT`
         );
 
         await add(
             "test_expected",
-            `ALTER TABLE sms ADD COLUMN test_expected TEXT`
+            `ALTER TABLE test ADD COLUMN test_expected TEXT`
         );
 
         await add(
             "test_user_id",
-            `ALTER TABLE sms ADD COLUMN test_user_id TEXT`
+            `ALTER TABLE test ADD COLUMN test_user_id TEXT`
         );
 
         await add(
             "test_created_by",
-            `ALTER TABLE sms ADD COLUMN test_created_by TEXT`
+            `ALTER TABLE test ADD COLUMN test_created_by TEXT`
         );
 
         console.log("✅ Migration completate");
@@ -160,7 +160,7 @@ async function initSchema() {
         `CREATE TABLE IF NOT EXISTS sims (
             id TEXT PRIMARY KEY, device_id TEXT NOT NULL, sim_id TEXT NOT NULL,
             label TEXT, candidate TEXT, last_seen INTEGER, UNIQUE(device_id, sim_id))`,
-        `CREATE TABLE IF NOT EXISTS sms (
+        `CREATE TABLE IF NOT EXISTS test (
             id TEXT PRIMARY KEY,
             device_id TEXT NOT NULL,
             sim_id TEXT NOT NULL,
@@ -199,8 +199,8 @@ async function initSchema() {
             created_by TEXT,
             user_id TEXT
         )`,
-        `CREATE INDEX IF NOT EXISTS idx_sms_device    ON sms(device_id)`,
-        `CREATE INDEX IF NOT EXISTS idx_sms_ts        ON sms(timestamp)`,
+        `CREATE INDEX IF NOT EXISTS idx_test_device    ON test(device_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_test_ts        ON test(timestamp)`,
         `CREATE INDEX IF NOT EXISTS idx_tests_status  ON tests(status)`,
         `CREATE INDEX IF NOT EXISTS idx_tests_created ON tests(created_at)`,
     ], "deferred");
@@ -460,9 +460,9 @@ app.patch("/app/device/:deviceId/rename", requireAppAuth, async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get("/app/sms", requireAppAuth, async (req, res) => {
+app.get("/app/test", requireAppAuth, async (req, res) => {
     try {
-        const rows = await q("SELECT * FROM sms WHERE is_test = 1 AND test_user_id = ? ORDER BY timestamp DESC LIMIT 500", [req.appUser.id]);
+        const rows = await q("SELECT * FROM test WHERE is_test = 1 AND test_user_id = ? ORDER BY timestamp DESC LIMIT 500", [req.appUser.id]);
         res.json(rows);
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -540,20 +540,20 @@ io.on("connection", (socket) => {
 });
 
 // ────────────────────────────────────────────
-// SMS
+// test
 // ────────────────────────────────────────────
-app.post("/sms", authDevice, async (req, res) => {
+app.post("/test", authDevice, async (req, res) => {
     try {
-        const sms = req.body;
+        const test = req.body;
 
-        if (!sms?.deviceId || !sms?.simId) {
+        if (!test?.deviceId || !test?.simId) {
             return res.status(400).json({
                 error: "Campi obbligatori"
             });
         }
 
         const id = crypto.randomUUID();
-        const ts = sms.timestamp || Date.now();
+        const ts = test.timestamp || Date.now();
 
         // Cerca test pending
         const pending = await q(`
@@ -562,19 +562,35 @@ app.post("/sms", authDevice, async (req, res) => {
             WHERE status = 'PENDING'
         `);
 
-        const msg = (sms.message || "").toLowerCase();
+        console.log("📩 test ricevuto:", {
+            deviceId: test.deviceId,
+            simId: test.simId,
+            message: test.message
+        });
+
+        console.log("🧪 Pending tests:", pending.map(t => ({
+            id: t.id,
+            device: t.device_id,
+            sim: t.sim_id,
+            expected: t.expected,
+            user: t.user_id
+        })));
+
+        const msg = (test.message || "").toLowerCase();
 
         const matchedTest = pending.find(test =>
-            test.device_id === sms.deviceId &&
-            test.sim_id === sms.simId &&
+            test.device_id === test.deviceId &&
+            test.sim_id === test.simId &&
             msg.includes(
                 (test.expected || "").toLowerCase()
             )
         );
 
-        // Inserisci SMS
+        console.log("🎯 Matched test:", matchedTest || "NONE");
+
+        // Inserisci test
         await run(`
-            INSERT INTO sms (
+            INSERT INTO test (
                 id,
                 device_id,
                 sim_id,
@@ -592,10 +608,10 @@ app.post("/sms", authDevice, async (req, res) => {
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         `, [
             id,
-            sms.deviceId,
-            sms.simId,
-            sms.sender || null,
-            sms.message || null,
+            test.deviceId,
+            test.simId,
+            test.sender || null,
+            test.message || null,
             ts,
             Date.now(),
 
@@ -619,8 +635,8 @@ app.post("/sms", authDevice, async (req, res) => {
             WHERE device_id = ?
             AND sim_id = ?
         `, [
-            sms.deviceId,
-            sms.simId
+            test.deviceId,
+            test.simId
         ]);
 
         if (!existingSim) {
@@ -636,8 +652,8 @@ app.post("/sms", authDevice, async (req, res) => {
                 VALUES (?,?,?,?,?,?)
             `, [
                 crypto.randomUUID(),
-                sms.deviceId,
-                sms.simId,
+                test.deviceId,
+                test.simId,
                 null,
                 null,
                 Date.now()
@@ -650,21 +666,21 @@ app.post("/sms", authDevice, async (req, res) => {
                 AND sim_id = ?
             `, [
                 Date.now(),
-                sms.deviceId,
-                sms.simId
+                test.deviceId,
+                test.simId
             ]);
         }
 
         // Device runtime
         const dev = Object.values(devicesOnline)
-            .find(d => d.deviceId === sms.deviceId);
+            .find(d => d.deviceId === test.deviceId);
 
         if (
             dev &&
-            !dev.sims.find(s => s.simId === sms.simId)
+            !dev.sims.find(s => s.simId === test.simId)
         ) {
             dev.sims.push({
-                simId: sms.simId
+                simId: test.simId
             });
         }
 
@@ -679,7 +695,7 @@ app.post("/sms", authDevice, async (req, res) => {
                     completed_at = ?
                 WHERE id = ?
             `, [
-                sms.message,
+                test.message,
                 Date.now(),
                 matchedTest.id
             ]);
@@ -687,13 +703,13 @@ app.post("/sms", authDevice, async (req, res) => {
             console.log(`✅ TEST PASS: ${matchedTest.id}`);
         }
 
-        // Emit SOLO SMS
-        io.emit("new_sms", {
+        // Emit SOLO test
+        io.emit("new_test", {
             id,
-            deviceId: sms.deviceId,
-            simId: sms.simId,
-            sender: sms.sender,
-            message: sms.message,
+            deviceId: test.deviceId,
+            simId: test.simId,
+            sender: test.sender,
+            message: test.message,
             timestamp: ts,
 
             isTest: !!matchedTest,
@@ -716,7 +732,7 @@ app.post("/sms", authDevice, async (req, res) => {
     }
 });
 
-app.get("/sms", requireAuth, async (req, res) => {
+app.get("/test", requireAuth, async (req, res) => {
     try {
 
         // ADMIN vede tutto
@@ -724,7 +740,7 @@ app.get("/sms", requireAuth, async (req, res) => {
 
             const rows = await q(`
                 SELECT *
-                FROM sms
+                FROM test
                 ORDER BY timestamp DESC
                 LIMIT 1000
             `);
@@ -732,10 +748,10 @@ app.get("/sms", requireAuth, async (req, res) => {
             return res.json(rows);
         }
 
-        // USER vede SOLO i suoi sms-test
+        // USER vede SOLO i suoi test-test
         const rows = await q(`
             SELECT *
-            FROM sms
+            FROM test
             WHERE
                 is_test = 1
                 AND test_user_id = ?
@@ -1067,7 +1083,7 @@ setInterval(async () => {
             if (now - test.created_at > test.timeout_ms) {
                 await run("UPDATE tests SET status='FAIL', completed_at=? WHERE id=?", [now, test.id]);
                 await run(`
-                    UPDATE sms
+                    UPDATE test
                     SET test_status = 'FAIL'
                     WHERE test_id = ?
                     AND test_status IS NULL
