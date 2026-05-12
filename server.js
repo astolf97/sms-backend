@@ -598,12 +598,18 @@ app.post("/sms", authDevice, async (req, res) => {
             sms.message || null,
             ts,
             Date.now(),
-            matchedTest?.id,
+
+            matchedTest?.id ?? null,
+
             matchedTest ? 1 : 0,
+
             matchedTest ? "PASS" : null,
-            matchedTest?.expected || null,
-            matchedTest?.user_id || null,
-            matchedTest?.created_by || null
+
+            matchedTest?.expected ?? null,
+
+            matchedTest?.user_id ?? null,
+
+            matchedTest?.created_by ?? null
         ]);
 
         // Aggiorna SIM
